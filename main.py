@@ -141,7 +141,7 @@ HTML_SAYFASI = """
         
         <div id="chatbox">
             <div class="mesaj-kutusu bot">
-                <div class="balon">Merhaba! Sana nasıl yardımcı olabilirim?</div>
+                <div class="balon">Merhaba! Size nasıl yardımcı olabilirim?</div>
             </div>
         </div>
         
@@ -200,6 +200,10 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
+        # --- SADE VE NET TALİMAT ---
+        # Botun analiz veya düşünce adımlarını yazmasını yasaklıyoruz. Sadece normal cevap verecek.
+        gizli_talimat = f"Sen yardımcı, kibar ve standart bir yapay zeka asistanısın. Kullanıcıya doğrudan yanıt ver. Kendi düşünce adımlarını, niyet analizlerini veya madde işaretlerini asla ekrana yazdırma. Sadece asıl cevabı söyle.\n\nKullanıcının mesajı: {kullanici_mesaji}"
+        
         uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
         basarili_cevap = None
@@ -209,8 +213,8 @@ def sor():
                 continue
             try:
                 aktif_model = genai.GenerativeModel(model_adi)
-                # Model artık sadece kullanıcının mesajını alıyor, hiçbir ekstra talimat yok.
-                response = aktif_model.generate_content(kullanici_mesaji)
+                # Direkt kullanıcı mesajı yerine, "düşünme sadece cevap ver" diyen gizli talimatı iletiyoruz
+                response = aktif_model.generate_content(gizli_talimat)
                 basarili_cevap = response.text
                 break
             except Exception:
