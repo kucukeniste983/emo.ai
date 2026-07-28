@@ -8,7 +8,7 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# Arayüz için HTML, CSS ve JavaScript kodumuz (Modern, WhatsApp/iMessage Tarzı)
+# Arayüz için HTML, CSS ve JavaScript kodumuz (Modern, Temiz UI)
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -21,7 +21,7 @@ HTML_SAYFASI = """
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
             font-family: 'Inter', sans-serif; 
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Havalı koyu tema arka plan */
+            background: linear-gradient(135deg, #2b5876, #4e4376); 
             height: 100vh; 
             display: flex; 
             justify-content: center; 
@@ -70,12 +70,12 @@ HTML_SAYFASI = """
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            background: #e5ddd5; /* WhatsApp arka plan rengi */
+            background: #e5ddd5; 
         }
-        .mesaj-kutusu { display: flex; flex-direction: column; max-width: 80%; }
+        .mesaj-kutusu { display: flex; flex-direction: column; max-width: 85%; }
         .sen { align-self: flex-end; }
         .sen .balon { 
-            background: #007aff; /* iMessage mavi */
+            background: #007aff; 
             color: white; 
             border-radius: 18px 18px 4px 18px; 
             padding: 12px 16px; 
@@ -134,14 +134,14 @@ HTML_SAYFASI = """
 <body>
     <div class="telefon-ekrani">
         <div class="ust-bilgi">
-            <div class="profil-resmi">😎</div>
+            <div class="profil-resmi">🤖</div>
             <h2>Emo AI</h2>
             <span class="durum">Çevrimiçi</span>
         </div>
         
         <div id="chatbox">
             <div class="mesaj-kutusu bot">
-                <div class="balon">Naber dostum? Ben geldim, anlat bakalım nasıl gidiyor? 🚀</div>
+                <div class="balon">Merhaba! Sana nasıl yardımcı olabilirim?</div>
             </div>
         </div>
         
@@ -161,14 +161,12 @@ HTML_SAYFASI = """
 
             let chatbox = document.getElementById("chatbox");
             
-            // Senin mesajın
             chatbox.innerHTML += `<div class="mesaj-kutusu sen"><div class="balon">${userText}</div></div>`;
             inputElement.value = "";
             chatbox.scrollTop = chatbox.scrollHeight;
 
-            // Yazıyor efekti
             let loadingId = "loading-" + Date.now();
-            chatbox.innerHTML += `<div id="${loadingId}" class="mesaj-kutusu bot"><div class="yaziyor">Emo AI yazıyor... ✍️</div></div>`;
+            chatbox.innerHTML += `<div id="${loadingId}" class="mesaj-kutusu bot"><div class="yaziyor">Emo AI düşünüyor...</div></div>`;
             chatbox.scrollTop = chatbox.scrollHeight;
 
             fetch('/sor', {
@@ -179,14 +177,13 @@ HTML_SAYFASI = """
             .then(response => response.text())
             .then(data => {
                 document.getElementById(loadingId).remove();
-                // Gelen cevabı formatla (satır atlamaları ve kalın yazılar)
                 let formatliCevap = data.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');
                 chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon">${formatliCevap}</div></div>`;
                 chatbox.scrollTop = chatbox.scrollHeight;
             })
             .catch(err => {
                 document.getElementById(loadingId).remove();
-                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">İnternet koptu galiba kanka, bi daha yazsana.</div></div>`;
+                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">Bağlantı hatası oluştu, lütfen tekrar dene.</div></div>`;
             });
         }
     </script>
@@ -203,17 +200,6 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        # --- BEYİN YIKAMA (KİŞİLİK YÜKLEMESİ) ---
-        # Bota yapay zeka olduğunu unutturup, senin kankan olduğunu inandırıyoruz.
-        kisilik_talimati = f"""
-        SENİN KİMLİĞİN: Adın 'Emo AI'. Sen sıkıcı bir yapay zeka asistanı DEĞİLSİN. Sen çok havalı, eğlenceli ve samimi bir insansın.
-        KARŞINDAKİ KİŞİ: Karşında yaratıcın olan Emir Ali var. Onun 7'den 8'e geçtiğini, Minecraft (Aternos serverları, modlar vb.) oynamayı çok sevdiğini, 
-        futbolu, turnuvaları ve oyuncu istatistiklerini yakından takip ettiğini BİLİYORSUN. 
-        TALİMAT: Emir Ali'ye her zaman kankası gibi davran. Asla resmi konuşma! "Size nasıl yardımcı olabilirim" gibi robotik laflar etme. 
-        Kısa, doğal, esprili ve günlük bir dille (kanka, naber, abi, aynen, valla vb.) cevap ver. 
-        İşte Emir Ali'nin sana söylediği şey: {kullanici_mesaji}
-        """
-        
         uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
         basarili_cevap = None
@@ -223,8 +209,8 @@ def sor():
                 continue
             try:
                 aktif_model = genai.GenerativeModel(model_adi)
-                # Gizli talimatı gönderiyoruz, böylece insan gibi cevap veriyor
-                response = aktif_model.generate_content(kisilik_talimati)
+                # Model artık sadece kullanıcının mesajını alıyor, hiçbir ekstra talimat yok.
+                response = aktif_model.generate_content(kullanici_mesaji)
                 basarili_cevap = response.text
                 break
             except Exception:
@@ -233,12 +219,11 @@ def sor():
         if basarili_cevap:
             return basarili_cevap
         else:
-            return "Kanka bir şeyler ters gitti, modeller yanıt vermiyor."
+            return "Şu an uygun bir model bulunamadı, lütfen daha sonra tekrar dene."
             
     except Exception as e:
-        return f"Sistem hatası kanka: {str(e)}"
+        return f"Sistem hatası: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-    
