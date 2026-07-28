@@ -200,10 +200,6 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        # --- SADE VE NET TALİMAT ---
-        # Botun analiz veya düşünce adımlarını yazmasını yasaklıyoruz. Sadece normal cevap verecek.
-        gizli_talimat = f"Sen yardımcı, kibar ve standart bir yapay zeka asistanısın. Kullanıcıya doğrudan yanıt ver. Kendi düşünce adımlarını, niyet analizlerini veya madde işaretlerini asla ekrana yazdırma. Sadece asıl cevabı söyle.\n\nKullanıcının mesajı: {kullanici_mesaji}"
-        
         uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
         basarili_cevap = None
@@ -212,11 +208,38 @@ def sor():
             if "2.5-flash" in model_adi or "gemini-pro" == model_adi or "1.5-flash" == model_adi:
                 continue
             try:
-                aktif_model = genai.GenerativeModel(model_adi)
-                # Direkt kullanıcı mesajı yerine, "düşünme sadece cevap ver" diyen gizli talimatı iletiyoruz
-                response = aktif_model.generate_content(gizli_talimat)
-                basarili_cevap = response.text
+                # 1. AŞAMA: Yeni nesil modeller için kesin emir sistemi (System Instruction)
+                try:
+                    aktif_model = genai.GenerativeModel(
+                        model_name=model_adi,
+                        system_instruction="Sen yardımcı, kibar bir asistansın. KESİNLİKLE niyet analizi, İngilizce 'Intent, Role, User says' gibi listeler yapma. YALNIZCA VE YALNIZCA ASIL CEVABI TÜRKÇE OLARAK SÖYLE."
+                    )
+                    response = aktif_model.generate_content(kullanici_mesaji)
+                except:
+                    # System instruction desteklemeyen eski modeller için B planı
+                    aktif_model = genai.GenerativeModel(model_adi)
+                    kati_prompt = f"Aşağıdaki mesaja sadece tek bir cümle cevap ver. Kesinlikle İngilizce analiz, adım veya liste yazma. Sadece asıl cevabı söyle.\n\nKullanıcı: {kullanici_mesaji}"
+                    response = aktif_model.generate_content(kati_prompt)
+                
+                ham_cevap = response.text.strip()
+                
+                # 2. AŞAMA: PYTHON GİYOTİNİ (Model inat edip analiz yazarsa, analizleri kesip atıyoruz)
+                if "Role:" in ham_cevap or "Intent:" in ham_cevap or "User says:" in ham_cevap:
+                    satirlar = ham_cevap.split('\\n')
+                    # Asıl cevap her zaman bu saçmalıkların en sonundadır
+                    ham_cevap = satirlar[-1].replace('"', '').strip()
+                    # Eğer son satır boşsa veya hala saçmaysa, sondan ilk anlamlı metni bul
+                    if not ham_cevap or ham_cevap.startswith('*'):
+                        for satir in reversed(satirlar):
+                            if satir.strip() and not satir.strip().startswith('*') and "Option" not in satir:
+                                ham_cevap = satir.replace('"', '').strip()
+                                break
+
+                # Çift tırnakları temizle
+                ham_cevap = ham_cevap.replace('"', '').replace('**', '')
+                basarili_cevap = ham_cevap
                 break
+                
             except Exception:
                 continue
                 
