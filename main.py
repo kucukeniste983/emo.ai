@@ -8,7 +8,7 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# balık.ai Akvaryum Tasarımı (Konuşma animasyonlu)
+# balık.ai Akvaryum Tasarımı (Yeni Karşılama Mesajlı)
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -54,6 +54,8 @@ HTML_SAYFASI = """
             flex-direction: column;
             align-items: center;
             z-index: 10;
+            width: 90%;
+            max-width: 400px;
         }
 
         /* Konuşma Balonu */
@@ -62,8 +64,8 @@ HTML_SAYFASI = """
             color: #004e92;
             padding: 20px 25px;
             border-radius: 30px;
-            font-size: 1.3rem;
-            max-width: 350px;
+            font-size: 1.2rem;
+            width: 100%;
             text-align: center;
             box-shadow: 0 15px 25px rgba(0,0,0,0.3);
             margin-bottom: 30px;
@@ -166,7 +168,8 @@ HTML_SAYFASI = """
     <div class="baloncuk" style="width: 25px; height: 25px; left: 80%; animation-duration: 7s; animation-delay: 0.5s"></div>
 
     <div class="akvaryum-merkez">
-        <div id="konusmaBalonu" class="konusma-balonu">Gluk gluk! Ben balık.ai! 🫧<br>Akvaryumuma hoş geldin, bana ne sormak istersin?</div>
+        <!-- Güncellenen sevimli karşılama mesajı -->
+        <div id="konusmaBalonu" class="konusma-balonu">Selam! 🫧 Hoş geldin! Seni gördüğüme çok sevindim, mutluluktan pırıl pırıl yüzüyorum! ✨</div>
         <div id="balik" class="balik">🐠</div>
     </div>
     
@@ -227,7 +230,6 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        # 404 KESİN ÇÖZÜMÜ: 2.5 gibi yeni/yasaklı modelleri filtreleyip çalışan ilk modeli buluyoruz
         tum_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         guvenli_modeller = [m for m in tum_modeller if "2.5" not in m]
         
@@ -243,16 +245,15 @@ def sor():
                 Çocuğun sorusu: {kullanici_mesaji}"""
                 
                 response = model.generate_content(cocuk_talimati)
-                break # Başarılı olduysa döngüyü kır
+                break
             except Exception:
-                continue # Hata verirse sıradakini dene
+                continue
                 
         if not response:
             return "Gluk gluk... Şu an akvaryumda çalışan uygun bir model bulamadım!"
             
         ham_cevap = response.text.strip()
         
-        # Sansür sistemi: Robotik analizler gelirse sadece en alttaki cevabı al
         if "Role:" in ham_cevap or "User says:" in ham_cevap or "Intent" in ham_cevap:
             satirlar = ham_cevap.split('\\n')
             temiz_satirlar = [s for s in satirlar if s.strip() != "" and not s.strip().startswith('*')]
