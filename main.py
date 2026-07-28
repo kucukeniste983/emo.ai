@@ -8,7 +8,7 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# Arayüz için HTML, CSS ve JavaScript kodumuz
+# Arayüz için HTML, CSS ve JavaScript kodumuz (Modern, WhatsApp/iMessage Tarzı)
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -16,29 +16,140 @@ HTML_SAYFASI = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emo AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
-        .chat-container { width: 100%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; }
-        h2 { text-align: center; color: #333; }
-        #chatbox { height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 15px; background: #fafafa; }
-        .mesaj { margin-bottom: 10px; padding: 10px; border-radius: 8px; max-width: 80%; line-height: 1.4; }
-        .sen { background-color: #d1e7dd; margin-left: auto; text-align: right; }
-        .bot { background-color: #e2e3e5; margin-right: auto; text-align: left; }
-        .input-area { display: flex; gap: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; font-size: 16px; }
-        button { padding: 10px 20px; background-color: #0d6efd; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0b5ed7; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Havalı koyu tema arka plan */
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .telefon-ekrani { 
+            width: 100%; 
+            max-width: 400px; 
+            height: 90vh; 
+            background: #f4f4f8; 
+            border-radius: 30px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            border: 8px solid #333;
+        }
+        .ust-bilgi { 
+            background: #ffffff; 
+            padding: 20px; 
+            text-align: center; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .profil-resmi {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .ust-bilgi h2 { font-size: 1.1rem; color: #111; font-weight: 600; }
+        .durum { font-size: 0.8rem; color: #4caf50; font-weight: 500; }
+        
+        #chatbox { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            background: #e5ddd5; /* WhatsApp arka plan rengi */
+        }
+        .mesaj-kutusu { display: flex; flex-direction: column; max-width: 80%; }
+        .sen { align-self: flex-end; }
+        .sen .balon { 
+            background: #007aff; /* iMessage mavi */
+            color: white; 
+            border-radius: 18px 18px 4px 18px; 
+            padding: 12px 16px; 
+            font-size: 0.95rem;
+            line-height: 1.4;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+        }
+        .bot { align-self: flex-start; }
+        .bot .balon { 
+            background: #ffffff; 
+            color: #333; 
+            border-radius: 18px 18px 18px 4px; 
+            padding: 12px 16px; 
+            font-size: 0.95rem;
+            line-height: 1.4;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+        }
+        
+        .input-alani { 
+            display: flex; 
+            padding: 15px; 
+            background: #ffffff; 
+            align-items: center;
+            gap: 10px;
+        }
+        input { 
+            flex: 1; 
+            padding: 14px 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 30px; 
+            outline: none; 
+            font-size: 0.95rem; 
+            background: #f9f9f9; 
+            transition: 0.3s;
+        }
+        input:focus { border-color: #007aff; background: #fff; }
+        button { 
+            background: #007aff; 
+            color: white; 
+            border: none; 
+            border-radius: 50%; 
+            width: 45px; 
+            height: 45px; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            transition: 0.2s; 
+        }
+        button:hover { background: #005bb5; transform: scale(1.05); }
+        button svg { width: 20px; height: 20px; fill: white; margin-left: 3px; }
+        
+        .yaziyor { font-style: italic; color: #888; font-size: 0.85rem; padding-left: 5px; }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <h2>Emo AI ✨</h2>
-        <div id="chatbox">
-            <div class="mesaj bot"><b>Emo AI:</b> <br>Merhaba! Ben hazırım, bana istediğini sorabilirsin.</div>
+    <div class="telefon-ekrani">
+        <div class="ust-bilgi">
+            <div class="profil-resmi">😎</div>
+            <h2>Emo AI</h2>
+            <span class="durum">Çevrimiçi</span>
         </div>
-        <div class="input-area">
-            <input type="text" id="userInput" placeholder="Mesajını yaz..." onkeypress="if(event.key === 'Enter') soruSor()">
-            <button onclick="soruSor()">Gönder</button>
+        
+        <div id="chatbox">
+            <div class="mesaj-kutusu bot">
+                <div class="balon">Naber dostum? Ben geldim, anlat bakalım nasıl gidiyor? 🚀</div>
+            </div>
+        </div>
+        
+        <div class="input-alani">
+            <input type="text" id="userInput" placeholder="Mesaj yaz..." onkeypress="if(event.key === 'Enter') soruSor()">
+            <button onclick="soruSor()">
+                <svg viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"></path></svg>
+            </button>
         </div>
     </div>
 
@@ -50,12 +161,14 @@ HTML_SAYFASI = """
 
             let chatbox = document.getElementById("chatbox");
             
-            chatbox.innerHTML += `<div class="mesaj sen"><b>Sen:</b> <br>${userText}</div>`;
+            // Senin mesajın
+            chatbox.innerHTML += `<div class="mesaj-kutusu sen"><div class="balon">${userText}</div></div>`;
             inputElement.value = "";
             chatbox.scrollTop = chatbox.scrollHeight;
 
+            // Yazıyor efekti
             let loadingId = "loading-" + Date.now();
-            chatbox.innerHTML += `<div id="${loadingId}" class="mesaj bot"><i>Emo AI düşünüyor... 🧠</i></div>`;
+            chatbox.innerHTML += `<div id="${loadingId}" class="mesaj-kutusu bot"><div class="yaziyor">Emo AI yazıyor... ✍️</div></div>`;
             chatbox.scrollTop = chatbox.scrollHeight;
 
             fetch('/sor', {
@@ -66,13 +179,14 @@ HTML_SAYFASI = """
             .then(response => response.text())
             .then(data => {
                 document.getElementById(loadingId).remove();
+                // Gelen cevabı formatla (satır atlamaları ve kalın yazılar)
                 let formatliCevap = data.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');
-                chatbox.innerHTML += `<div class="mesaj bot"><b>Emo AI:</b> <br>${formatliCevap}</div>`;
+                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon">${formatliCevap}</div></div>`;
                 chatbox.scrollTop = chatbox.scrollHeight;
             })
             .catch(err => {
                 document.getElementById(loadingId).remove();
-                chatbox.innerHTML += `<div class="mesaj bot" style="color:red;"><b>Hata:</b> Bağlantı kurulamadı.</div>`;
+                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">İnternet koptu galiba kanka, bi daha yazsana.</div></div>`;
             });
         }
     </script>
@@ -89,36 +203,42 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        # API'nin desteklediği TÜM modelleri bul
+        # --- BEYİN YIKAMA (KİŞİLİK YÜKLEMESİ) ---
+        # Bota yapay zeka olduğunu unutturup, senin kankan olduğunu inandırıyoruz.
+        kisilik_talimati = f"""
+        SENİN KİMLİĞİN: Adın 'Emo AI'. Sen sıkıcı bir yapay zeka asistanı DEĞİLSİN. Sen çok havalı, eğlenceli ve samimi bir insansın.
+        KARŞINDAKİ KİŞİ: Karşında yaratıcın olan Emir Ali var. Onun 7'den 8'e geçtiğini, Minecraft (Aternos serverları, modlar vb.) oynamayı çok sevdiğini, 
+        futbolu, turnuvaları ve oyuncu istatistiklerini yakından takip ettiğini BİLİYORSUN. 
+        TALİMAT: Emir Ali'ye her zaman kankası gibi davran. Asla resmi konuşma! "Size nasıl yardımcı olabilirim" gibi robotik laflar etme. 
+        Kısa, doğal, esprili ve günlük bir dille (kanka, naber, abi, aynen, valla vb.) cevap ver. 
+        İşte Emir Ali'nin sana söylediği şey: {kullanici_mesaji}
+        """
+        
         uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        son_hata = ""
         basarili_cevap = None
         
-        # Hepsini tek tek dene
         for model_adi in uygun_modeller:
-            # Hata veren eski modelleri doğrudan pas geç
             if "2.5-flash" in model_adi or "gemini-pro" == model_adi or "1.5-flash" == model_adi:
                 continue
-                
             try:
                 aktif_model = genai.GenerativeModel(model_adi)
-                response = aktif_model.generate_content(kullanici_mesaji)
+                # Gizli talimatı gönderiyoruz, böylece insan gibi cevap veriyor
+                response = aktif_model.generate_content(kisilik_talimati)
                 basarili_cevap = response.text
-                break # Çalışan modeli bulduk, döngüyü bitir!
-            except Exception as e:
-                son_hata = str(e)
-                continue # Hata verirse pes etme, sıradaki modele geç
+                break
+            except Exception:
+                continue
                 
-        # Eğer bir cevap bulabildiyse döndür
         if basarili_cevap:
             return basarili_cevap
         else:
-            return f"Maalesef çalışan bir model bulunamadı. Son alınan hata: {son_hata} <br> Hesabındaki modeller şunlar: {', '.join(uygun_modeller)}"
+            return "Kanka bir şeyler ters gitti, modeller yanıt vermiyor."
             
     except Exception as e:
-        return f"Genel bir hata oluştu: {str(e)}"
+        return f"Sistem hatası kanka: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+    
