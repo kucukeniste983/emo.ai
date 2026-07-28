@@ -8,8 +8,19 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# Gemini modelini güncelledik (gemini-pro)
-model = genai.GenerativeModel('gemini-pro')
+# -- ZEKİ MODEL BULUCU --
+# İsim tahmin etmiyoruz, API'nin desteklediği ilk modeli kendisi buluyor.
+calisan_model_adi = 'gemini-1.5-pro' # Olası bir hataya karşı yedek
+try:
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            calisan_model_adi = m.name
+            break
+except:
+    pass
+
+# Bulunan modeli sisteme yüklüyoruz
+model = genai.GenerativeModel(calisan_model_adi)
 
 # Arayüz için HTML, CSS ve JavaScript kodumuz
 HTML_SAYFASI = """
@@ -53,17 +64,14 @@ HTML_SAYFASI = """
 
             let chatbox = document.getElementById("chatbox");
             
-            // Senin mesajını ekrana ekle
             chatbox.innerHTML += `<div class="mesaj sen"><b>Sen:</b> <br>${userText}</div>`;
             inputElement.value = "";
             chatbox.scrollTop = chatbox.scrollHeight;
 
-            // Yükleniyor animasyonu ekle
             let loadingId = "loading-" + Date.now();
             chatbox.innerHTML += `<div id="${loadingId}" class="mesaj bot"><i>Emo AI düşünüyor... 🧠</i></div>`;
             chatbox.scrollTop = chatbox.scrollHeight;
 
-            // Arka plandaki Python kodumuza soruyu gönderiyoruz
             fetch('/sor', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -72,10 +80,7 @@ HTML_SAYFASI = """
             .then(response => response.text())
             .then(data => {
                 document.getElementById(loadingId).remove();
-                
-                // Gelen metindeki kalın yazıları (**) ve alt satıra geçmeleri HTML'e çeviriyoruz
                 let formatliCevap = data.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');
-                
                 chatbox.innerHTML += `<div class="mesaj bot"><b>Emo AI:</b> <br>${formatliCevap}</div>`;
                 chatbox.scrollTop = chatbox.scrollHeight;
             })
@@ -91,14 +96,12 @@ HTML_SAYFASI = """
 
 @app.route('/')
 def home():
-    # Sayfaya girildiğinde yukarıdaki HTML'i gösteriyoruz
     return render_template_string(HTML_SAYFASI)
 
 @app.route('/sor', methods=['POST'])
 def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
-        # Gemini'ye soruyu gönderip cevabı alıyoruz
         response = model.generate_content(kullanici_mesaji)
         return response.text
     except Exception as e:
@@ -107,4 +110,3 @@ def sor():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-    
