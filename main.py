@@ -8,21 +8,22 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-model = genai.GenerativeModel('gemini-1.5-flash')
-
+# Arayüz: Okyanus Teması ve Balık Tasarımı
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emo AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Bilgin Balık</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
-            font-family: 'Inter', sans-serif; 
-            background: linear-gradient(135deg, #2b5876, #4e4376); 
+            /* Çocuklar için daha sevimli bir font */
+            font-family: 'Comic Neue', cursive, sans-serif; 
+            /* Okyanus arka planı */
+            background: linear-gradient(135deg, #00b4db, #0083b0); 
             height: 100vh; 
             display: flex; 
             justify-content: center; 
@@ -32,37 +33,38 @@ HTML_SAYFASI = """
             width: 100%; 
             max-width: 400px; 
             height: 90vh; 
-            background: #f4f4f8; 
+            background: #e0f7fa; /* Açık su mavisi */
             border-radius: 30px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
             display: flex; 
             flex-direction: column; 
             overflow: hidden; 
-            border: 8px solid #333;
+            border: 8px solid #ffffff;
         }
         .ust-bilgi { 
-            background: #ffffff; 
-            padding: 20px; 
+            background: #0083b0; 
+            padding: 15px; 
             text-align: center; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
             z-index: 10;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         .profil-resmi {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%);
+            width: 60px;
+            height: 60px;
+            background: #ffffff;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
+            font-size: 35px; /* Büyük balık emojisi */
             margin-bottom: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-        .ust-bilgi h2 { font-size: 1.1rem; color: #111; font-weight: 600; }
-        .durum { font-size: 0.8rem; color: #4caf50; font-weight: 500; }
+        .ust-bilgi h2 { font-size: 1.4rem; color: #ffffff; font-weight: 700; letter-spacing: 1px; }
+        .durum { font-size: 0.9rem; color: #b2ebf2; font-weight: 700; }
         
         #chatbox { 
             flex: 1; 
@@ -71,28 +73,30 @@ HTML_SAYFASI = """
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            background: #e5ddd5; 
+            background: url('https://www.transparenttextures.com/patterns/cubes.png'), #e0f7fa; 
         }
         .mesaj-kutusu { display: flex; flex-direction: column; max-width: 85%; }
         .sen { align-self: flex-end; }
         .sen .balon { 
-            background: #007aff; 
-            color: white; 
-            border-radius: 18px 18px 4px 18px; 
+            background: #ffb74d; /* Çocuk mesajı turuncu */
+            color: #333; 
+            border-radius: 20px 20px 4px 20px; 
             padding: 12px 16px; 
-            font-size: 0.95rem;
-            line-height: 1.4;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            font-size: 1.1rem;
+            font-weight: 700;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
         }
         .bot { align-self: flex-start; }
         .bot .balon { 
             background: #ffffff; 
-            color: #333; 
-            border-radius: 18px 18px 18px 4px; 
+            color: #006064; 
+            border-radius: 20px 20px 20px 4px; 
             padding: 12px 16px; 
-            font-size: 0.95rem;
+            font-size: 1.1rem;
+            font-weight: 700;
             line-height: 1.4;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            border: 2px solid #80deea;
         }
         
         .input-alani { 
@@ -105,49 +109,52 @@ HTML_SAYFASI = """
         input { 
             flex: 1; 
             padding: 14px 20px; 
-            border: 1px solid #ddd; 
+            border: 2px solid #80deea; 
             border-radius: 30px; 
             outline: none; 
-            font-size: 0.95rem; 
+            font-size: 1rem; 
+            font-family: 'Comic Neue', cursive;
+            font-weight: 700;
             background: #f9f9f9; 
             transition: 0.3s;
         }
-        input:focus { border-color: #007aff; background: #fff; }
+        input:focus { border-color: #0083b0; background: #fff; }
         button { 
-            background: #007aff; 
+            background: #0083b0; 
             color: white; 
             border: none; 
             border-radius: 50%; 
-            width: 45px; 
-            height: 45px; 
+            width: 50px; 
+            height: 50px; 
             cursor: pointer; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             transition: 0.2s; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
-        button:hover { background: #005bb5; transform: scale(1.05); }
-        button svg { width: 20px; height: 20px; fill: white; margin-left: 3px; }
+        button:hover { background: #0056b3; transform: scale(1.05); }
+        button svg { width: 24px; height: 24px; fill: white; margin-left: 2px; }
         
-        .yaziyor { font-style: italic; color: #888; font-size: 0.85rem; padding-left: 5px; }
+        .yaziyor { font-style: italic; color: #0083b0; font-size: 0.9rem; padding-left: 5px; font-weight: 700;}
     </style>
 </head>
 <body>
     <div class="telefon-ekrani">
         <div class="ust-bilgi">
-            <div class="profil-resmi">🤖</div>
-            <h2>Emo AI</h2>
-            <span class="durum">Çevrimiçi</span>
+            <div class="profil-resmi">🐠</div>
+            <h2>Bilgin Balık</h2>
+            <span class="durum">Sularda Yüzüyor 🫧</span>
         </div>
         
         <div id="chatbox">
             <div class="mesaj-kutusu bot">
-                <div class="balon">Merhaba! Sana nasıl yardımcı olabilirim?</div>
+                <div class="balon">Gluk gluk! Merhaba küçük dostum! 🫧 Ben Bilgin Balık. Suyun altından sana yardımcı olmak için geldim. Bana ne sormak istersin? 🐟</div>
             </div>
         </div>
         
         <div class="input-alani">
-            <input type="text" id="userInput" placeholder="Mesaj yaz..." onkeypress="if(event.key === 'Enter') soruSor()">
+            <input type="text" id="userInput" placeholder="Balığa soru sor..." onkeypress="if(event.key === 'Enter') soruSor()">
             <button onclick="soruSor()">
                 <svg viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"></path></svg>
             </button>
@@ -167,7 +174,7 @@ HTML_SAYFASI = """
             chatbox.scrollTop = chatbox.scrollHeight;
 
             let loadingId = "loading-" + Date.now();
-            chatbox.innerHTML += `<div id="${loadingId}" class="mesaj-kutusu bot"><div class="yaziyor">Emo AI düşünüyor...</div></div>`;
+            chatbox.innerHTML += `<div id="${loadingId}" class="mesaj-kutusu bot"><div class="yaziyor">Bilgin Balık baloncuklar çıkarıyor... 🫧🫧</div></div>`;
             chatbox.scrollTop = chatbox.scrollHeight;
 
             fetch('/sor', {
@@ -178,13 +185,14 @@ HTML_SAYFASI = """
             .then(response => response.text())
             .then(data => {
                 document.getElementById(loadingId).remove();
+                // Basit kalınlaştırma ve alt satıra geçme ayarları
                 let formatliCevap = data.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');
                 chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon">${formatliCevap}</div></div>`;
                 chatbox.scrollTop = chatbox.scrollHeight;
             })
             .catch(err => {
                 document.getElementById(loadingId).remove();
-                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">Bağlantı hatası oluştu.</div></div>`;
+                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">Olamaz! Denizanası kabloları ısırdı, tekrar dener misin? 🐙</div></div>`;
             });
         }
     </script>
@@ -201,29 +209,29 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        response = model.generate_content(kullanici_mesaji)
-        ham_cevap = response.text.strip()
+        # Balık karakterine bürünmesi için arka planda yapay zekaya gizli emir veriyoruz:
+        cocuk_talimati = f"""Sen okyanusta yaşayan çok sevimli, eğlenceli ve akıllı 'Bilgin Balık'sın.
+        Karşında sana soru soran küçük bir çocuk var.
+        Kurallar:
+        1. Çocuğa anlayabileceği çok basit, tatlı ve kısa cümlelerle cevap ver.
+        2. Arada 'Gluk gluk', 'Şıp şıp' gibi balık sesleri kullan ve bol bol 🐠, 🫧, 🐟 gibi emojiler koy.
+        3. Asla robot olduğunu veya yapay zeka olduğunu söyleme, sen gerçek bir balıksın.
+        4. Kesinlikle iç sesini, İngilizce analizlerini (User says, Role vb.) yazma, sadece çocuğa cevap ver.
         
-        # --- SENİN MANTIĞIN: SADECE SON CÜMLEYİ KES AL ---
-        # Bütün cevabı satır satır bölüyoruz
-        satirlar = ham_cevap.split('\\n')
-        # Sadece içi dolu olan (boş olmayan) satırları listeye alıyoruz
-        dolu_satirlar = [satir.strip() for satir in satirlar if satir.strip() != ""]
+        Çocuğun sorusu: {kullanici_mesaji}"""
         
-        if dolu_satirlar:
-            # -1 diyerek listenin en sonundaki satırı alıyoruz (Yani yapay zekanın asıl cevabını)
-            son_cumle = dolu_satirlar[-1]
-            
-            # Eğer son cümle tırnak işareti (") ile başlıyorsa temizliyoruz
-            son_cumle = son_cumle.replace('"', '').replace("'", "")
-            
-            return son_cumle
-        else:
-            return ham_cevap
+        # 404 Hatasını çözen sağlam model (gemini-pro)
+        try:
+            model = genai.GenerativeModel('gemini-pro')
+            response = model.generate_content(cocuk_talimati)
+            return response.text.strip()
+        except Exception as model_hata:
+            return f"Akvaryumda küçük bir sorun var: {str(model_hata)}"
             
     except Exception as e:
-        return f"Hata: {str(e)}"
+        return f"Sistem hatası: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+    
