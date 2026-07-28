@@ -8,7 +8,7 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# Gemini modelini seçiyoruz
+# Gemini modelini güncelledik (gemini-pro)
 model = genai.GenerativeModel('gemini-pro')
 
 # Arayüz için HTML, CSS ve JavaScript kodumuz
