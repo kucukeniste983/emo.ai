@@ -8,20 +8,6 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# -- ZEKİ MODEL BULUCU --
-# İsim tahmin etmiyoruz, API'nin desteklediği ilk modeli kendisi buluyor.
-calisan_model_adi = 'gemini-1.5-pro' # Olası bir hataya karşı yedek
-try:
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            calisan_model_adi = m.name
-            break
-except:
-    pass
-
-# Bulunan modeli sisteme yüklüyoruz
-model = genai.GenerativeModel(calisan_model_adi)
-
 # Arayüz için HTML, CSS ve JavaScript kodumuz
 HTML_SAYFASI = """
 <!DOCTYPE html>
@@ -102,10 +88,36 @@ def home():
 def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
-        response = model.generate_content(kullanici_mesaji)
-        return response.text
+        
+        # API'nin desteklediği TÜM modelleri bul
+        uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        son_hata = ""
+        basarili_cevap = None
+        
+        # Hepsini tek tek dene
+        for model_adi in uygun_modeller:
+            # Hata veren eski modelleri doğrudan pas geç
+            if "2.5-flash" in model_adi or "gemini-pro" == model_adi or "1.5-flash" == model_adi:
+                continue
+                
+            try:
+                aktif_model = genai.GenerativeModel(model_adi)
+                response = aktif_model.generate_content(kullanici_mesaji)
+                basarili_cevap = response.text
+                break # Çalışan modeli bulduk, döngüyü bitir!
+            except Exception as e:
+                son_hata = str(e)
+                continue # Hata verirse pes etme, sıradaki modele geç
+                
+        # Eğer bir cevap bulabildiyse döndür
+        if basarili_cevap:
+            return basarili_cevap
+        else:
+            return f"Maalesef çalışan bir model bulunamadı. Son alınan hata: {son_hata} <br> Hesabındaki modeller şunlar: {', '.join(uygun_modeller)}"
+            
     except Exception as e:
-        return f"Bir hata oluştu: {str(e)}"
+        return f"Genel bir hata oluştu: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
