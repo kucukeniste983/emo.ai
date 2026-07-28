@@ -9,7 +9,7 @@ API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
 # Gemini modelini seçiyoruz
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 # Arayüz için HTML, CSS ve JavaScript kodumuz
 HTML_SAYFASI = """
