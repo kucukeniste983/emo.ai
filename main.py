@@ -8,20 +8,19 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# Tam Ekran Akvaryum Tasarımı (Balık konuşma animasyonlu)
+# balık.ai Akvaryum Tasarımı (Konuşma animasyonlu)
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Akvaryum - Bilgin Balık</title>
+    <title>balık.ai - Dev Akvaryum</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
             font-family: 'Nunito', sans-serif; 
-            /* Akvaryum derinlik efekti */
             background: radial-gradient(circle at center, #00b4db 0%, #000428 100%);
             height: 100vh; 
             display: flex; 
@@ -32,7 +31,7 @@ HTML_SAYFASI = """
             position: relative;
         }
         
-        /* Arkadan çıkan su baloncukları */
+        /* Su baloncukları */
         .baloncuk {
             position: absolute;
             bottom: -50px;
@@ -96,7 +95,7 @@ HTML_SAYFASI = """
 
         /* Dev Balık */
         .balik {
-            font-size: 160px; /* Balığı devasa yaptık */
+            font-size: 160px;
             animation: yuzme 4s ease-in-out infinite;
             filter: drop-shadow(0 15px 15px rgba(0,0,0,0.4));
         }
@@ -116,7 +115,7 @@ HTML_SAYFASI = """
             100% { transform: scale(1.08) rotate(-5deg) skewX(-2deg); }
         }
 
-        /* Alt kısımdaki soru sorma alanı */
+        /* Alt Soru Alanı */
         .input-alani { 
             display: flex; 
             padding: 20px; 
@@ -161,19 +160,18 @@ HTML_SAYFASI = """
 </head>
 <body>
     
-    <!-- Arka plan baloncukları -->
     <div class="baloncuk" style="width: 20px; height: 20px; left: 10%; animation-duration: 4s;"></div>
     <div class="baloncuk" style="width: 30px; height: 30px; left: 30%; animation-duration: 6s; animation-delay: 1s"></div>
     <div class="baloncuk" style="width: 15px; height: 15px; left: 60%; animation-duration: 5s; animation-delay: 2s"></div>
     <div class="baloncuk" style="width: 25px; height: 25px; left: 80%; animation-duration: 7s; animation-delay: 0.5s"></div>
 
     <div class="akvaryum-merkez">
-        <div id="konusmaBalonu" class="konusma-balonu">Gluk gluk! Ben Bilgin Balık! 🫧<br>Akvaryumuma hoş geldin, bana ne sormak istersin?</div>
+        <div id="konusmaBalonu" class="konusma-balonu">Gluk gluk! Ben balık.ai! 🫧<br>Akvaryumuma hoş geldin, bana ne sormak istersin?</div>
         <div id="balik" class="balik">🐠</div>
     </div>
     
     <div class="input-alani">
-        <input type="text" id="userInput" placeholder="Balığa bir soru sor..." onkeypress="if(event.key === 'Enter') soruSor()">
+        <input type="text" id="userInput" placeholder="balık.ai'a bir soru sor..." onkeypress="if(event.key === 'Enter') soruSor()">
         <button onclick="soruSor()">
             <svg viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"></path></svg>
         </button>
@@ -188,7 +186,6 @@ HTML_SAYFASI = """
             let balon = document.getElementById("konusmaBalonu");
             let balik = document.getElementById("balik");
             
-            // Düşünme aşaması (Ağzı hareket ediyor)
             balon.innerHTML = "Hmm... Düşünüyorum... Gluk gluk... 🫧";
             balik.classList.add("konusuyor");
             inputElement.value = "";
@@ -200,25 +197,20 @@ HTML_SAYFASI = """
             })
             .then(response => response.text())
             .then(data => {
-                // Cevap gelince ağzı hala oynamaya devam etsin (okuma süresi kadar)
                 balon.innerHTML = data;
-                
-                // Cümlenin uzunluğuna göre ağzını oynatma süresini belirliyoruz
                 let okumaSuresi = Math.min(data.length * 60, 5000); 
                 
-                // Önce temizle, sonra tekrar ekle ki animasyon baştan başlasın
                 balik.classList.remove("konusuyor");
-                void balik.offsetWidth; // CSS Trigger
+                void balik.offsetWidth; 
                 balik.classList.add("konusuyor");
                 
-                // Konuşma süresi bitince ağzı dursun
                 setTimeout(() => {
                     balik.classList.remove("konusuyor");
                 }, okumaSuresi);
             })
             .catch(err => {
                 balik.classList.remove("konusuyor");
-                balon.innerHTML = "Olamaz! Denizanası bağlantımı kesti. 🐙";
+                balon.innerHTML = "Olamaz! Denizanası kabloları ısırdı. 🐙";
             });
         }
     </script>
@@ -235,28 +227,32 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        # 404 HATASINI KESİN ÇÖZEN KOD: Google'a "bana açık olan modelleri ver" diyoruz.
-        gecerli_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        # 404 KESİN ÇÖZÜMÜ: 2.5 gibi yeni/yasaklı modelleri filtreleyip çalışan ilk modeli buluyoruz
+        tum_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        guvenli_modeller = [m for m in tum_modeller if "2.5" not in m]
         
-        if not gecerli_modeller:
-            return "Okyanusta uygun balık bulunamadı! API key ayarlarını kontrol et."
+        response = None
+        for model_adi in guvenli_modeller:
+            try:
+                model = genai.GenerativeModel(model_adi)
+                cocuk_talimati = f"""Sen dev akvaryumda yaşayan çok eğlenceli ve çocuk dostu 'balık.ai' adında akıllı bir balıksın.
+                Kurallar:
+                1. Çocuğa anlayabileceği çok kısa, tatlı ve samimi cümlelerle cevap ver.
+                2. Robot veya yapay zeka olduğunu asla söyleme. Sen gerçek bir balıksın.
+                
+                Çocuğun sorusu: {kullanici_mesaji}"""
+                
+                response = model.generate_content(cocuk_talimati)
+                break # Başarılı olduysa döngüyü kır
+            except Exception:
+                continue # Hata verirse sıradakini dene
+                
+        if not response:
+            return "Gluk gluk... Şu an akvaryumda çalışan uygun bir model bulamadım!"
             
-        # Listeden, hesabına izni olan İLK MODELİ seçiyoruz (404 vermesi imkansız)
-        secilen_model_adi = gecerli_modeller[0] 
-        model = genai.GenerativeModel(secilen_model_adi)
-        
-        cocuk_talimati = f"""Sen dev akvaryumda yaşayan çok eğlenceli 'Bilgin Balık'sın.
-        Kurallar:
-        1. Çocuğa anlayabileceği çok kısa, tatlı cümlelerle cevap ver.
-        2. Robot, yapay zeka olduğunu asla söyleme. Sen gerçek bir balıksın.
-        
-        Çocuğun sorusu: {kullanici_mesaji}"""
-        
-        response = model.generate_content(cocuk_talimati)
         ham_cevap = response.text.strip()
         
-        # -- SENİN İSTEDİĞİN SANSÜR SİSTEMİ --
-        # Model yine not tutar veya liste yaparsa, sadece sondaki asıl cevabı kesip alıyoruz.
+        # Sansür sistemi: Robotik analizler gelirse sadece en alttaki cevabı al
         if "Role:" in ham_cevap or "User says:" in ham_cevap or "Intent" in ham_cevap:
             satirlar = ham_cevap.split('\\n')
             temiz_satirlar = [s for s in satirlar if s.strip() != "" and not s.strip().startswith('*')]
@@ -266,7 +262,7 @@ def sor():
         return ham_cevap
         
     except Exception as e:
-        return f"Balık biraz tıkandı: {str(e)}"
+        return f"balık.ai biraz tıkandı: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
