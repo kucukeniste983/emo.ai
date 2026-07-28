@@ -8,10 +8,8 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# BOZUK MODELLERİ ARAMAYI BIRAKTIK! Direkt en sağlam ve güncel modeli kullanıyoruz.
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# Arayüz için HTML, CSS ve JavaScript kodumuz
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -144,7 +142,7 @@ HTML_SAYFASI = """
         
         <div id="chatbox">
             <div class="mesaj-kutusu bot">
-                <div class="balon">Merhaba! Size nasıl yardımcı olabilirim?</div>
+                <div class="balon">Merhaba! Sana nasıl yardımcı olabilirim?</div>
             </div>
         </div>
         
@@ -203,10 +201,26 @@ def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
         
-        # Filtre yok, kurcalama yok. Dümdüz soruyu gönder, cevabı al.
         response = model.generate_content(kullanici_mesaji)
-        return response.text
+        ham_cevap = response.text.strip()
         
+        # --- SENİN MANTIĞIN: SADECE SON CÜMLEYİ KES AL ---
+        # Bütün cevabı satır satır bölüyoruz
+        satirlar = ham_cevap.split('\\n')
+        # Sadece içi dolu olan (boş olmayan) satırları listeye alıyoruz
+        dolu_satirlar = [satir.strip() for satir in satirlar if satir.strip() != ""]
+        
+        if dolu_satirlar:
+            # -1 diyerek listenin en sonundaki satırı alıyoruz (Yani yapay zekanın asıl cevabını)
+            son_cumle = dolu_satirlar[-1]
+            
+            # Eğer son cümle tırnak işareti (") ile başlıyorsa temizliyoruz
+            son_cumle = son_cumle.replace('"', '').replace("'", "")
+            
+            return son_cumle
+        else:
+            return ham_cevap
+            
     except Exception as e:
         return f"Hata: {str(e)}"
 
