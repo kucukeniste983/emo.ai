@@ -8,7 +8,7 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-# Arayüz için HTML, CSS ve JavaScript kodumuz (Modern, Temiz UI)
+# Arayüz için HTML, CSS ve JavaScript kodumuz
 HTML_SAYFASI = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -183,7 +183,7 @@ HTML_SAYFASI = """
             })
             .catch(err => {
                 document.getElementById(loadingId).remove();
-                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">Bağlantı hatası oluştu, lütfen tekrar dene.</div></div>`;
+                chatbox.innerHTML += `<div class="mesaj-kutusu bot"><div class="balon" style="color:red;">Bağlantı hatası oluştu.</div></div>`;
             });
         }
     </script>
@@ -199,7 +199,6 @@ def home():
 def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
-        
         uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
         basarili_cevap = None
@@ -208,36 +207,27 @@ def sor():
             if "2.5-flash" in model_adi or "gemini-pro" == model_adi or "1.5-flash" == model_adi:
                 continue
             try:
-                # 1. AŞAMA: Yeni nesil modeller için kesin emir sistemi (System Instruction)
-                try:
-                    aktif_model = genai.GenerativeModel(
-                        model_name=model_adi,
-                        system_instruction="Sen yardımcı, kibar bir asistansın. KESİNLİKLE niyet analizi, İngilizce 'Intent, Role, User says' gibi listeler yapma. YALNIZCA VE YALNIZCA ASIL CEVABI TÜRKÇE OLARAK SÖYLE."
-                    )
-                    response = aktif_model.generate_content(kullanici_mesaji)
-                except:
-                    # System instruction desteklemeyen eski modeller için B planı
-                    aktif_model = genai.GenerativeModel(model_adi)
-                    kati_prompt = f"Aşağıdaki mesaja sadece tek bir cümle cevap ver. Kesinlikle İngilizce analiz, adım veya liste yazma. Sadece asıl cevabı söyle.\n\nKullanıcı: {kullanici_mesaji}"
-                    response = aktif_model.generate_content(kati_prompt)
+                # 1. HİÇBİR kural vermiyoruz. Kafasını karıştıracak kelime yok. Sadece mesajı atıyoruz.
+                aktif_model = genai.GenerativeModel(model_adi)
+                response = aktif_model.generate_content(kullanici_mesaji)
                 
                 ham_cevap = response.text.strip()
                 
-                # 2. AŞAMA: PYTHON GİYOTİNİ (Model inat edip analiz yazarsa, analizleri kesip atıyoruz)
-                if "Role:" in ham_cevap or "Intent:" in ham_cevap or "User says:" in ham_cevap:
-                    satirlar = ham_cevap.split('\\n')
-                    # Asıl cevap her zaman bu saçmalıkların en sonundadır
-                    ham_cevap = satirlar[-1].replace('"', '').strip()
-                    # Eğer son satır boşsa veya hala saçmaysa, sondan ilk anlamlı metni bul
-                    if not ham_cevap or ham_cevap.startswith('*'):
-                        for satir in reversed(satirlar):
-                            if satir.strip() and not satir.strip().startswith('*') and "Option" not in satir:
-                                ham_cevap = satir.replace('"', '').strip()
-                                break
-
-                # Çift tırnakları temizle
-                ham_cevap = ham_cevap.replace('"', '').replace('**', '')
-                basarili_cevap = ham_cevap
+                # 2. PYTHON SANSÜRÜ: Eğer yine de inat edip İngilizce listeler yaparsa...
+                if "User says:" in ham_cevap or "Constraint" in ham_cevap or "Role:" in ham_cevap or "Instruction:" in ham_cevap:
+                    # Yazdığı destanı paragraflara ayır
+                    paragraflar = ham_cevap.split('\n\n')
+                    # SADECE en sondaki paragrafı (asıl cevabını) al
+                    ham_cevap = paragraflar[-1].strip()
+                    
+                    # Eğer son paragrafta hala yıldız (*) varsa o satırları da at
+                    if "*" in ham_cevap:
+                        temiz_satirlar = [s for s in ham_cevap.split('\n') if not s.strip().startswith('*')]
+                        if temiz_satirlar:
+                            ham_cevap = temiz_satirlar[-1].strip()
+                            
+                # Tırnak işaretlerini vs. temizle
+                basarili_cevap = ham_cevap.replace('"', '')
                 break
                 
             except Exception:
@@ -246,7 +236,7 @@ def sor():
         if basarili_cevap:
             return basarili_cevap
         else:
-            return "Şu an uygun bir model bulunamadı, lütfen daha sonra tekrar dene."
+            return "Şu an uygun bir model bulunamadı."
             
     except Exception as e:
         return f"Sistem hatası: {str(e)}"
@@ -254,3 +244,4 @@ def sor():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+    
