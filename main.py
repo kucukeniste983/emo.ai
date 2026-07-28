@@ -8,6 +8,9 @@ app = Flask(__name__)
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
+# BOZUK MODELLERİ ARAMAYI BIRAKTIK! Direkt en sağlam ve güncel modeli kullanıyoruz.
+model = genai.GenerativeModel('gemini-1.5-flash')
+
 # Arayüz için HTML, CSS ve JavaScript kodumuz
 HTML_SAYFASI = """
 <!DOCTYPE html>
@@ -199,47 +202,13 @@ def home():
 def sor():
     try:
         kullanici_mesaji = request.form['mesaj']
-        uygun_modeller = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        basarili_cevap = None
+        # Filtre yok, kurcalama yok. Dümdüz soruyu gönder, cevabı al.
+        response = model.generate_content(kullanici_mesaji)
+        return response.text
         
-        for model_adi in uygun_modeller:
-            if "2.5-flash" in model_adi or "gemini-pro" == model_adi or "1.5-flash" == model_adi:
-                continue
-            try:
-                # 1. HİÇBİR kural vermiyoruz. Kafasını karıştıracak kelime yok. Sadece mesajı atıyoruz.
-                aktif_model = genai.GenerativeModel(model_adi)
-                response = aktif_model.generate_content(kullanici_mesaji)
-                
-                ham_cevap = response.text.strip()
-                
-                # 2. PYTHON SANSÜRÜ: Eğer yine de inat edip İngilizce listeler yaparsa...
-                if "User says:" in ham_cevap or "Constraint" in ham_cevap or "Role:" in ham_cevap or "Instruction:" in ham_cevap:
-                    # Yazdığı destanı paragraflara ayır
-                    paragraflar = ham_cevap.split('\n\n')
-                    # SADECE en sondaki paragrafı (asıl cevabını) al
-                    ham_cevap = paragraflar[-1].strip()
-                    
-                    # Eğer son paragrafta hala yıldız (*) varsa o satırları da at
-                    if "*" in ham_cevap:
-                        temiz_satirlar = [s for s in ham_cevap.split('\n') if not s.strip().startswith('*')]
-                        if temiz_satirlar:
-                            ham_cevap = temiz_satirlar[-1].strip()
-                            
-                # Tırnak işaretlerini vs. temizle
-                basarili_cevap = ham_cevap.replace('"', '')
-                break
-                
-            except Exception:
-                continue
-                
-        if basarili_cevap:
-            return basarili_cevap
-        else:
-            return "Şu an uygun bir model bulunamadı."
-            
     except Exception as e:
-        return f"Sistem hatası: {str(e)}"
+        return f"Hata: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
