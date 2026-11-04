@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101310">
+  <meta name="description" content="Oyun bilgisayarını bütçene göre oluştur. Uyumlu parçaları seç, Akakçe ürün bağlantıları ve doğrulanmış fiyatlarla sistemini keşfet.">
+  <title>RIGLAB — Bütçene göre, oyununa göre.</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#builder">Sistem toplamaya geç</a>
+  <header class="site-header wrap">
+    <a class="brand" href="/" aria-label="Riglab ana sayfa"><span class="brand-icon" aria-hidden="true">r<span>■</span></span>riglab<span class="brand-dot">.</span></a>
+    <nav aria-label="Ana menü"><a class="nav-active" href="#builder">Sistem topla</a><a href="#how-it-works">Nasıl çalışır?</a></nav>
+    <span class="header-note"><span class="tiny-cross">✳</span> Oyuncular için tasarlandı</span>
+  </header>
+
+  <main>
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="signal"></span> DAHA AZ ARAŞTIR. DAHA ÇOK OYNA.</div>
+        <h1 id="hero-title">Bütçeni söyle.<br><span>Oyununu yükselt.</span></h1>
+        <p>Onlarca sekmeye, yüzlerce parçaya son.<br class="desktop-break"> Bütçene uygun parçaları bir araya getirelim,<br class="desktop-break"> sen sıradaki oyununu seç.</p>
+        <a class="hero-link" href="#builder">Kendi sistemini oluştur <span aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a>
+        <div class="hero-benefits"><span><b aria-hidden="true">✓</b> Parça uyumluluk kontrolü</span><span><b aria-hidden="true">✓</b> Akakçe ürün bağlantıları</span></div>
+      </div>
+      <div class="hero-art">
+        <span class="art-coordinate">BUILD / PLAY / REPEAT</span>
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <img class="rig-illustration" src="{{ url_for('static', filename='rig.svg') }}" alt="Yeşil aydınlatmalı oyun bilgisayarı illüstrasyonu" width="480" height="420">
+        <div class="art-tag tag-top"><span class="tag-dot"></span><div>Senin bütçen.<br><strong>Senin oyun alanın.</strong></div></div>
+        <div class="art-tag tag-bottom"><span class="tag-icon" aria-hidden="true">⌘</span><div>Birbirine uygun parçalar<br><strong>Tek bir sistemde.</strong></div></div>
+        <span class="art-footnote">GÖRSEL TEMSİLİDİR / ÖNERİLEN SİSTEM DEĞİLDİR</span>
+      </div>
+    </section>
+
+    <div class="section-line wrap"><span>İYİ BİR SİSTEM, DOĞRU BİR DENGE.</span><span>01 — SİSTEMİNİ OLUŞTUR</span></div>
+
+    <section id="builder" class="builder wrap" aria-label="Bilgisayar toplama aracı">
+      <div class="config-panel">
+        <div class="panel-heading"><span class="step-badge">01</span><span>Kontrol sende.</span><span class="small-chip">SADECE KASA</span></div>
+        <h2>Ne kadar ayıralım?</h2>
+        <p class="panel-description">Bütçeni belirle. Oyun odaklı bir sistem için<br>parçaları birlikte değerlendirelim.</p>
+        <form id="build-form">
+          <label class="field-label" for="budget">TOPLAM BÜTÇEN</label>
+          <div class="budget-field"><input id="budget" name="budget" type="text" inputmode="numeric" value="40.000" aria-describedby="budget-help budget-error" required maxlength="9" autocomplete="off"><span>TL</span></div>
+          <input id="budget-range" class="budget-range" type="range" min="15000" max="150000" step="500" value="40000" aria-label="Bütçeyi kaydırarak seç">
+          <div class="range-labels" id="budget-help"><span>15.000 TL</span><span>150.000 TL</span></div>
+          <div class="budget-presets" aria-label="Hızlı bütçe seçimi"><button type="button" data-budget="25000">25.000 ₺</button><button type="button" class="selected" data-budget="40000">40.000 ₺</button><button type="button" data-budget="60000">60.000 ₺</button><button type="button" data-budget="100000">100.000 ₺</button></div>
+          <p id="budget-error" class="field-error" role="alert" hidden></p>
+          <fieldset class="resolution-field"><legend class="field-label">HANGİ ÇÖZÜNÜRLÜKTE OYNUYORSUN?</legend><div class="resolution-options">
+            <label><input type="radio" name="resolution" value="1080p" checked><span><strong>1080p</strong><small>Full HD</small></span></label>
+            <label><input type="radio" name="resolution" value="1440p"><span><strong>1440p</strong><small>Quad HD</small></span></label>
+            <label><input type="radio" name="resolution" value="4k"><span><strong>4K</strong><small>Ultra HD</small></span></label>
+          </div></fieldset>
+          <button id="build-button" class="primary-button" type="submit"><span class="button-label">Sistemimi oluştur</span><span class="button-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="spinner" aria-hidden="true" hidden></span></button>
+          <p class="form-note"><span aria-hidden="true">⌁</span> Ücretsiz. Üyelik yok. Karar tamamen senin.</p>
+        </form>
+      </div>
+
+      <section class="result-panel" aria-label="Sistem önerisi" aria-live="polite" aria-busy="false" id="result-panel">
+        <div class="result-topline"><span class="field-label">SENİN YENİ SİSTEMİN</span><span class="source-label">Fiyat kaynağı <b>akakçe</b><span aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span></div>
+        <div id="empty-state" class="empty-state">
+          <div class="empty-emblem" aria-hidden="true"><svg width="52" height="52" viewBox="0 0 52 52" fill="none"><rect x="13" y="13" width="26" height="26" rx="5" stroke="currentColor" stroke-width="1.5"/><rect x="20" y="20" width="12" height="12" rx="2" fill="currentColor" opacity=".35"/><path d="M19 6v7m7-7v7m7-7v7M19 39v7m7-7v7m7-7v7M6 19h7m-7 7h7m-7 7h7m26-14h7m-7 7h7m-7 7h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <span class="empty-kicker">BİR SONRAKİ SEVİYEYE HAZIR MISIN?</span>
+          <h2>Güçlü bir sistem.<br>Tam senin bütçende.</h2>
+          <p>Soldan bütçeni seç ve ilk adımı at.<br>Uyumlu parçalar ve doğrulanabilen fiyatlar<br>burada bir araya gelecek.</p>
+          <div class="component-preview" aria-label="Seçilecek parçalar">{% for key, label in categories.items() %}<span>{{ label }}</span>{% endfor %}</div>
+        </div>
+        <div id="loading-state" class="state-message" hidden><span class="large-spinner" aria-hidden="true"></span><h2>Yeni sistemin şekilleniyor.</h2><p>Akakçe ürünleri ve fiyatları kontrol ediliyor.<br>Bu işlem yaklaşık bir dakika sürebilir.</p><div class="loading-caption">Güncel ilanlar · Uyumlu parçalar · Bütçe kontrolü</div></div>
+        <div id="error-state" class="state-message" hidden><span class="error-symbol" aria-hidden="true"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.7M20 12a8 8 0 0 0-2.3-5.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="empty-kicker">BU SEFER OLMADI</span><h2 id="error-title" tabindex="-1">Fiyatları doğrulayamadık.</h2><p id="error-message"></p><button type="button" id="retry-button" class="secondary-button">Tekrar dene <span aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button><span class="error-note">Güncel fiyat olmadan, rastgele öneri yok.</span></div>
+        <div id="build-result" hidden>
+          <div class="result-heading"><div><span class="empty-kicker">OYUNA HAZIR BİR ADIM DAHA YAKIN</span><h2 id="result-title" tabindex="-1">Senin oyun sistemin.</h2></div><span class="resolution-badge" id="result-resolution"></span></div>
+          <div id="parts-list" class="parts-list"></div>
+          <div class="total-row"><div><span>SİSTEM TOPLAMI</span><strong id="total-price"></strong></div><div class="remaining"><span>Bütçende kalan</span><strong id="remaining-price"></strong></div></div>
+          <div class="budget-meter" role="meter" aria-label="Kullanılan bütçe" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="budget-fill"></span></div>
+          <div class="result-meta"><span id="price-time"></span><button type="button" id="copy-build">Listeyi kopyala <span aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button></div>
+          <details class="compatibility-details" open><summary><span class="check-icon" aria-hidden="true">✓</span> Uyumluluk kontrolü <span aria-hidden="true">+</span></summary><ul id="compatibility-list"></ul></details>
+          <details class="purchase-details"><summary>Satın almadan önce <span aria-hidden="true">+</span></summary><ul id="warning-list"></ul></details>
+        </div>
+      </section>
+    </section>
+
+    <section class="how-section wrap" id="how-it-works" aria-labelledby="how-title"><div class="section-line"><span>KARMAŞIK PARÇALAR. BASİT BİR SÜREÇ.</span><span>02 — NASIL ÇALIŞIR?</span></div><h2 id="how-title">Üç adım. Yeni oyun alanın.</h2><div class="how-grid"><article><span class="how-number">01 /</span><h3>Bütçeni belirle.</h3><p>Ne harcamak istediğini ve hedef çözünürlüğünü seç. Başlangıç noktası senin önceliklerin.</p></article><article><span class="how-number">02 /</span><h3>Parçalar bir araya gelsin.</h3><p>Kataloğumuzdaki işlemci, ekran kartı ve diğer bileşenler bütçe ve temel uyumluluk için değerlendirilir.</p></article><article><span class="how-number">03 /</span><h3>İlanları incele.</h3><p>Her parçanın doğrulanan fiyatını ve Akakçe ürün sayfasını gör. Son fiyatı ve stoğu kontrol ederek karar ver.</p></article></div></section>
+    <section class="closing-note wrap"><span aria-hidden="true">✳</span><p>İyi bir bilgisayar toplamak,<br><strong>tamamen doğru parçaları bir araya getirmekle ilgili.</strong></p><a href="#builder" aria-label="Sistem toplamaya dön"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></section>
+  </main>
+  <footer class="site-footer wrap"><a class="brand" href="/">riglab<span class="brand-dot">.</span></a><p>Daha akıllı seçimler. Daha iyi oyunlar.</p><span>Akakçe ile resmî bir bağlantımız bulunmamaktadır.</span></footer>
+  <template id="part-template"><article class="part-row"><span class="part-symbol" aria-hidden="true"></span><div class="part-info"><span class="part-category"></span><h3 class="part-name"></h3></div><div class="part-offer"><strong class="part-price"></strong><a class="part-link" target="_blank" rel="noopener noreferrer">Akakçe’de gör <span aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a></div></article></template>
+  <noscript><p class="noscript-message">Sistem toplama aracını kullanmak için JavaScript’i etkinleştirmen gerekiyor.</p></noscript>
+</body>
+</html>
