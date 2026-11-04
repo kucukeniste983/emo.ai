@@ -5,7 +5,7 @@ from decimal import Decimal
 import json
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from main import create_app
 from pc_builder.catalog import CATALOG
@@ -125,6 +125,35 @@ class ParsingTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_robots_txt_requests_plain_text_with_honest_user_agent(self):
+        source = AkakceSource()
+        response = Mock(status_code=200, encoding='utf-8')
+        response.iter_content.return_value = [b'User-agent: *\nAllow: /\n']
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        with patch('pc_builder.prices.requests.get', return_value=response) as get:
+            source._check_robots()
+        headers = get.call_args.kwargs['headers']
+        self.assertIn('text/plain', headers['Accept'])
+        self.assertIn('Riglab/', headers['User-Agent'])
+
+    def test_refusal_preserves_http_status_and_stops_repeat_requests(self):
+        for status in (401, 403, 406):
+            with self.subTest(status=status):
+                source = AkakceSource()
+                response = Mock(status_code=status)
+                response.__enter__ = Mock(return_value=response)
+                response.__exit__ = Mock(return_value=False)
+                with patch('pc_builder.prices.requests.get', return_value=response) as get:
+                    with self.assertRaises(SourceUnavailable) as first:
+                        source.quotes(CATALOG)
+                    self.assertEqual(first.exception.status_code, status)
+                    source._retry_after = 0
+                    with self.assertRaises(SourceUnavailable) as second:
+                        source.quotes(CATALOG)
+                    self.assertEqual(second.exception.status_code, status)
+                    get.assert_called_once()
+
     def test_cache_is_reused_without_network(self):
         source = AkakceSource()
         source._cache = fixture_quotes()
@@ -152,6 +181,16 @@ class SourceTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
+    def test_406_is_explained_and_not_marked_retryable(self):
+        error = SourceUnavailable('private details', status_code=406)
+        client = create_app(FakeSource(error=error)).test_client()
+        response = client.post('/api/build', json={'budget': 40000})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json['source_status'], 406)
+        self.assertFalse(response.json['retryable'])
+        self.assertIn('406', response.json['message'])
+        self.assertNotIn('private', response.json['message'])
+
     def test_valid_request_returns_full_build(self):
         client = create_app(FakeSource()).test_client()
         response = client.post('/api/build', json={'budget': 40000, 'resolution': '1440p'})

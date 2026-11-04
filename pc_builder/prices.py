@@ -25,7 +25,17 @@ PRODUCT_PATH = re.compile(r'-fiyati,\d+\.html$')
 
 
 class SourceUnavailable(Exception):
-    pass
+    def __init__(self, message='Source unavailable', *, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
+
+    @property
+    def user_message(self):
+        if self.status_code in (401, 403, 406):
+            return f'Akakçe fiyat isteğini kabul etmedi (HTTP {self.status_code}). Canlı fiyatlar alınamadı; otomatik sorgular durduruldu.'
+        if self.status_code == 429:
+            return 'Akakçe istek sınırına ulaşıldı (HTTP 429). Fiyatları şu anda güncelleyemiyoruz.'
+        return 'Akakçe’nin güncel fiyatlarına şu anda ulaşamıyoruz. Doğrulanmamış fiyatlarla sistem önermiyoruz.'
 
 
 class SourceBusy(Exception):
@@ -126,6 +136,7 @@ class AkakceSource:
         self._interval = 1.0
         self._stop = threading.Event()
         self._deadline = float('inf')
+        self._failure = None
 
     def _read(self, url, robots=False):
         for _ in range(4):
@@ -141,7 +152,8 @@ class AkakceSource:
             if self._stop.is_set() or time.monotonic() > self._deadline:
                 raise SourceUnavailable('Request time budget exhausted')
             try:
-                with requests.get(url, headers={'User-Agent': AGENT, 'Accept': 'text/html,application/json'},
+                accept = 'text/plain, */*;q=0.5' if robots else 'text/html, application/xhtml+xml, */*;q=0.5'
+                with requests.get(url, headers={'User-Agent': AGENT, 'Accept': accept},
                                   timeout=(4, 10), allow_redirects=False, stream=True) as response:
                     if response.status_code in (301, 302, 303, 307, 308):
                         url = urljoin(url, response.headers.get('Location', ''))
@@ -149,7 +161,7 @@ class AkakceSource:
                     if response.status_code == 404:
                         raise PageMissing
                     if response.status_code != 200:
-                        raise SourceUnavailable('Source refused or failed the request')
+                        raise SourceUnavailable(f'Source returned HTTP {response.status_code}', status_code=response.status_code)
                     chunks, size = [], 0
                     for chunk in response.iter_content(65536):
                         if time.monotonic() > self._deadline:
@@ -207,8 +219,8 @@ class AkakceSource:
     def quotes(self, components):
         if self._cache and time.monotonic() - self._cache_at < 900:
             return dict(self._cache)
-        if time.monotonic() < self._retry_after:
-            raise SourceUnavailable('Source in cooldown')
+        if self._failure is not None and (self._failure.status_code in (401, 403, 406) or time.monotonic() < self._retry_after):
+            raise self._failure
         if not self._refresh.acquire(blocking=False):
             raise SourceBusy
         try:
@@ -222,8 +234,10 @@ class AkakceSource:
             if not verified:
                 raise SourceUnavailable('No supported verified price data')
             self._cache, self._cache_at = verified, started
+            self._failure = None
             return dict(verified)
-        except SourceUnavailable:
+        except SourceUnavailable as error:
+            self._failure = error
             self._retry_after = time.monotonic() + 60
             raise
         finally:

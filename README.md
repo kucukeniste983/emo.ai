@@ -65,6 +65,8 @@ Tek worker, fiyat önbelleğini ve yenileme kilidini paylaşır. Üretimde birde
 
 Adaptör robots.txt kurallarına uyar, istekleri saniyede en fazla bir başlangıçla sınırlar, üç bağlantıdan fazlasını eşzamanlı açmaz, sonuçları 15 dakika önbellekler ve kaynak hatasında 60 saniye bekler. Her yenilemenin süre sınırı vardır. TLS doğrulaması ve ortamın proxy/CA ayarları korunur. CAPTCHA, erişim engeli veya robots kısıtlaması aşılmaz. Otomatik erişim izinli değilse izinli bir veri akışı / iş ortaklığı gerekir.
 
+Yerel kullanıcıdan `robots.txt` için HTTP 406 yanıtı bildirildi. Dosyanın düz metin türüne uygun `Accept` başlığı düzeltildi; bu değişikliğin canlı sunucuda sorunu çözdüğü henüz doğrulanmadı. `401`, `403` veya `406` devam ederse süreç boyunca yeni fiyat istekleri gönderilmez; site ve terminal durum kodunu açıkça gösterir. Sunucunun reddetme nedeni yalnızca durum kodundan kesinleştirilemez. Başlık düzeltmesi dışında tarayıcı taklidi veya erişim engeli aşma uygulanmaz.
+
 Kaynak erişilemiyorsa API `503 source_unavailable`, eksiksiz uygun kombinasyon yoksa `422 no_matching_build` döndürür. Önceki veya sahte fiyatlar yerine açık bir hata gösterilir. Test fiyatları yalnızca `tests/` altında sentetiktir; uygulamada demo fiyat veya sahte ürün bağlantısı yoktur.
 
 ## Uyumluluk ve kapsam
@@ -85,6 +87,6 @@ PYTHONDONTWRITEBYTECODE=1 /workspace/.venvs/emo.ai/bin/python -m unittest discov
 node --check static/app.js
 ```
 
-31 test; bütçe hesabı, eksik parça, uyumsuz soket/bellek, güç ve kasa boyutu, SKU/fiyat ayrıştırma, önbellek, kaynak kesintisi, API ve bot komut satırı doğrulamasını kapsar. Botun dosya koruması, JSON çıktısı ve yalnızca yerel sunucu başlatması da kontrol edilir. Testler canlı Akakçe erişimi gerektirmez ve bunun çalıştığına kanıt değildir.
+34 test; bütçe hesabı, eksik parça, uyumsuz soket/bellek, güç ve kasa boyutu, SKU/fiyat ayrıştırma, önbellek, kaynak kesintisi, API ve bot komut satırı doğrulamasını kapsar. Botun dosya koruması, JSON çıktısı, yalnızca yerel sunucu başlatması, robots.txt içerik türü ve reddedilen isteğin yinelenmemesi de kontrol edilir. Testler canlı Akakçe erişimi gerektirmez ve bunun çalıştığına kanıt değildir.
 
 Masaüstü ve mobil Chromium kontrolleri ayrıca çalıştırıldı: form, hata durumu, yatay taşma ve sentetik yanıtla yedi parçalı sonuç görünümü doğrulandı. Gerçek `/api/build` isteğinin ağ engelinde fiyat üretmeden 503 vermesi de kontrol edildi.

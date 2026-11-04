@@ -75,8 +75,11 @@ def run_cli(args, source=None):
     source = source if source is not None else AkakceSource()
     try:
         quotes = source.quotes(CATALOG)
-    except (SourceUnavailable, SourceBusy):
-        print('Akakçe fiyatları doğrulanamadı. Bağlantı, otomatik erişim izni veya sayfa yapısı kontrol edilmeli. Fiyat uydurulmadı.', file=sys.stderr)
+    except SourceUnavailable as error:
+        print(error.user_message, file=sys.stderr)
+        return 2
+    except SourceBusy:
+        print('Fiyatlar şu anda başka bir istek için güncelleniyor.', file=sys.stderr)
         return 2
     result = choose_build(CATALOG, quotes, args.budget, args.resolution)
     if result is None:

@@ -50,10 +50,11 @@ function state(name) {
   });
 }
 
-function errorState(message, kind) {
+function errorState(message, kind, retryable = true) {
   state('error-state');
   $('#error-title').textContent = kind === 'no_matching_build' ? 'Biraz farklı düşünelim.' : 'Fiyatları doğrulayamadık.';
   $('#error-message').textContent = message;
+  $('#retry-button').hidden = !retryable;
   $('#error-title').focus({ preventScroll: true });
 }
 
@@ -128,7 +129,7 @@ form.addEventListener('submit', async (event) => {
     });
     const data = await response.json();
     if (!response.ok) {
-      errorState(data.message || 'Şu anda sistem oluşturamıyoruz. Biraz sonra tekrar dene.', data.error);
+      errorState(data.message || 'Şu anda sistem oluşturamıyoruz. Biraz sonra tekrar dene.', data.error, data.retryable !== false);
     } else {
       renderBuild(data);
     }
