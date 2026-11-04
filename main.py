@@ -43,8 +43,11 @@ def create_app(source=None):
             return jsonify(error='source_busy', message='Fiyatlar şu anda güncelleniyor. Kısa bir süre sonra tekrar dene.'), 429
         except SourceUnavailable as error:
             response = jsonify(error='source_unavailable', message=error.user_message,
-                               source_status=error.status_code, retryable=error.status_code not in (401, 403, 406))
+                               source_status=error.status_code, retry_after=error.retry_after,
+                               retryable=error.status_code not in (401, 403, 406))
             response.status_code = 503
+            if error.status_code == 429:
+                response.headers['Retry-After'] = str(error.retry_after)
             return response
         result = choose_build(CATALOG, quotes, budget, resolution)
         if result is None:

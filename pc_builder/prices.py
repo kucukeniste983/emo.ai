@@ -7,8 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from email.utils import parsedate_to_datetime
 import json
+import math
+import os
+from pathlib import Path
 import re
+import tempfile
 import threading
 import time
 from urllib.parse import urlencode, urljoin, urlparse
@@ -24,17 +29,41 @@ HOSTS = {'akakce.com', 'www.akakce.com'}
 PRODUCT_PATH = re.compile(r'-fiyati,\d+\.html$')
 
 
+def retry_delay(value, now=None):
+    """Honor both HTTP Retry-After formats; missing/invalid values wait 60s."""
+    now = time.time() if now is None else now
+    try:
+        value = str(value).strip()
+        if value.isdigit():
+            delay = float(value)
+        else:
+            date = parsedate_to_datetime(value)
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            delay = date.timestamp() - now
+        if math.isfinite(delay):
+            return max(1, delay)
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return 60
+
+
 class SourceUnavailable(Exception):
-    def __init__(self, message='Source unavailable', *, status_code=None):
+    def __init__(self, message='Source unavailable', *, status_code=None, retry_at=None):
         super().__init__(message)
         self.status_code = status_code
+        self.retry_at = retry_at if retry_at is not None else (time.time() + 60 if status_code == 429 else None)
+
+    @property
+    def retry_after(self):
+        return max(1, math.ceil(self.retry_at - time.time())) if self.retry_at is not None else None
 
     @property
     def user_message(self):
         if self.status_code in (401, 403, 406):
             return f'Akakçe fiyat isteğini kabul etmedi (HTTP {self.status_code}). Canlı fiyatlar alınamadı; otomatik sorgular durduruldu.'
         if self.status_code == 429:
-            return 'Akakçe istek sınırına ulaşıldı (HTTP 429). Fiyatları şu anda güncelleyemiyoruz.'
+            return f'Akakçe istek sınırına ulaşıldı (HTTP 429). En az {self.retry_after} saniye bekle; bu sürede yeni fiyat isteği gönderilmeyecek.'
         return 'Akakçe’nin güncel fiyatlarına şu anda ulaşamıyoruz. Doğrulanmamış fiyatlarla sistem önermiyoruz.'
 
 
@@ -124,7 +153,7 @@ def parse_quote(html, url, component):
 
 class AkakceSource:
     """Per-process cache, one refresh at a time, up to three bounded workers."""
-    def __init__(self):
+    def __init__(self, state_dir=None):
         self._refresh = threading.Lock()
         self._rate = threading.Lock()
         self._cache = {}
@@ -137,6 +166,39 @@ class AkakceSource:
         self._stop = threading.Event()
         self._deadline = float('inf')
         self._failure = None
+        if state_dir is None:
+            state_dir = Path(os.environ.get('LOCALAPPDATA') or os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'riglab'
+        self._cooldown_path = Path(state_dir) / 'akakce-cooldown.json'
+
+    def _restore_cooldown(self):
+        try:
+            with self._cooldown_path.open(encoding='utf-8') as saved:
+                data = json.loads(saved.read(1024))
+            retry_at = float(data['retry_at'])
+            if data.get('version') == 1 and math.isfinite(retry_at) and retry_at > time.time():
+                self._failure = SourceUnavailable('Source rate limit', status_code=429, retry_at=retry_at)
+                self._retry_after = time.monotonic() + (retry_at - time.time())
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    def _save_cooldown(self, retry_at):
+        temporary = None
+        try:
+            self._cooldown_path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=self._cooldown_path.parent,
+                                             prefix='cooldown-', suffix='.tmp', delete=False) as saved:
+                temporary = Path(saved.name)
+                json.dump({'version': 1, 'retry_at': retry_at}, saved, allow_nan=False)
+            temporary.replace(self._cooldown_path)
+        except OSError:
+            # A read-only cache still retains the limit in this process.
+            pass
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
     def _read(self, url, robots=False):
         for _ in range(4):
@@ -161,7 +223,10 @@ class AkakceSource:
                     if response.status_code == 404:
                         raise PageMissing
                     if response.status_code != 200:
-                        raise SourceUnavailable(f'Source returned HTTP {response.status_code}', status_code=response.status_code)
+                        retry_at = (time.time() + retry_delay(response.headers.get('Retry-After'))
+                                    if response.status_code == 429 else None)
+                        raise SourceUnavailable(f'Source returned HTTP {response.status_code}',
+                                                status_code=response.status_code, retry_at=retry_at)
                     chunks, size = [], 0
                     for chunk in response.iter_content(65536):
                         if time.monotonic() > self._deadline:
@@ -219,6 +284,8 @@ class AkakceSource:
     def quotes(self, components):
         if self._cache and time.monotonic() - self._cache_at < 900:
             return dict(self._cache)
+        if self._failure is None or self._failure.status_code == 429:
+            self._restore_cooldown()
         if self._failure is not None and (self._failure.status_code in (401, 403, 406) or time.monotonic() < self._retry_after):
             raise self._failure
         if not self._refresh.acquire(blocking=False):
@@ -238,7 +305,9 @@ class AkakceSource:
             return dict(verified)
         except SourceUnavailable as error:
             self._failure = error
-            self._retry_after = time.monotonic() + 60
+            self._retry_after = time.monotonic() + (error.retry_after if error.status_code == 429 else 60)
+            if error.status_code == 429:
+                self._save_cooldown(error.retry_at)
             raise
         finally:
             self._refresh.release()

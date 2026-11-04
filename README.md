@@ -65,6 +65,8 @@ Tek worker, fiyat önbelleğini ve yenileme kilidini paylaşır. Üretimde birde
 
 Adaptör robots.txt kurallarına uyar, istekleri saniyede en fazla bir başlangıçla sınırlar, üç bağlantıdan fazlasını eşzamanlı açmaz, sonuçları 15 dakika önbellekler ve kaynak hatasında 60 saniye bekler. Her yenilemenin süre sınırı vardır. TLS doğrulaması ve ortamın proxy/CA ayarları korunur. CAPTCHA, erişim engeli veya robots kısıtlaması aşılmaz. Otomatik erişim izinli değilse izinli bir veri akışı / iş ortaklığı gerekir.
 
+HTTP 429 için sunucunun `Retry-After` başlığı (saniye veya HTTP tarihi) dikkate alınır. Başlık yoksa 60 saniye bekleme uygulanır; bu süre erişimin açılacağına dair bir garanti değildir. Bekleme sonu kullanıcı önbellek klasöründeki `riglab/akakce-cooldown.json` dosyasında saklanır; süreç yeniden başlatılsa da süre dolmadan yeni fiyat isteği gönderilmez. Dosyada yalnızca sürüm ve bekleme zamanı bulunur. Windows'ta konum `%LOCALAPPDATA%\riglab`; diğer sistemlerde `$XDG_CACHE_HOME/riglab` veya `~/.cache/riglab` olur. Önbellek yazılamıyorsa bekleme yalnızca mevcut süreçte korunabilir. API ve terminal kalan süreyi bildirir. Bu kısıtlama hedef servisin erişim politikasını çözmez veya aşmaz.
+
 Yerel kullanıcıdan `robots.txt` için HTTP 406 yanıtı bildirildi. Dosyanın düz metin türüne uygun `Accept` başlığı düzeltildi; bu değişikliğin canlı sunucuda sorunu çözdüğü henüz doğrulanmadı. `401`, `403` veya `406` devam ederse süreç boyunca yeni fiyat istekleri gönderilmez; site ve terminal durum kodunu açıkça gösterir. Sunucunun reddetme nedeni yalnızca durum kodundan kesinleştirilemez. Başlık düzeltmesi dışında tarayıcı taklidi veya erişim engeli aşma uygulanmaz.
 
 Kaynak erişilemiyorsa API `503 source_unavailable`, eksiksiz uygun kombinasyon yoksa `422 no_matching_build` döndürür. Önceki veya sahte fiyatlar yerine açık bir hata gösterilir. Test fiyatları yalnızca `tests/` altında sentetiktir; uygulamada demo fiyat veya sahte ürün bağlantısı yoktur.
@@ -87,6 +89,6 @@ PYTHONDONTWRITEBYTECODE=1 /workspace/.venvs/emo.ai/bin/python -m unittest discov
 node --check static/app.js
 ```
 
-34 test; bütçe hesabı, eksik parça, uyumsuz soket/bellek, güç ve kasa boyutu, SKU/fiyat ayrıştırma, önbellek, kaynak kesintisi, API ve bot komut satırı doğrulamasını kapsar. Botun dosya koruması, JSON çıktısı, yalnızca yerel sunucu başlatması, robots.txt içerik türü ve reddedilen isteğin yinelenmemesi de kontrol edilir. Testler canlı Akakçe erişimi gerektirmez ve bunun çalıştığına kanıt değildir.
+38 test; bütçe hesabı, eksik parça, uyumsuz soket/bellek, güç ve kasa boyutu, SKU/fiyat ayrıştırma, önbellek, kaynak kesintisi, API ve bot komut satırı doğrulamasını kapsar. Botun dosya koruması, JSON çıktısı, yalnızca yerel sunucu başlatması, robots.txt içerik türü, reddedilen isteğin yinelenmemesi, Retry-After biçimleri ve yeniden başlatmada beklemenin korunması da kontrol edilir. Testler canlı Akakçe erişimi gerektirmez ve bunun çalıştığına kanıt değildir.
 
 Masaüstü ve mobil Chromium kontrolleri ayrıca çalıştırıldı: form, hata durumu, yatay taşma ve sentetik yanıtla yedi parçalı sonuç görünümü doğrulandı. Gerçek `/api/build` isteğinin ağ engelinde fiyat üretmeden 503 vermesi de kontrol edildi.

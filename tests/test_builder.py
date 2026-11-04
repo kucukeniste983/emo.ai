@@ -2,7 +2,10 @@
 from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
+from email.utils import formatdate
 import json
+from pathlib import Path
+import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -10,7 +13,7 @@ from unittest.mock import Mock, patch
 from main import create_app
 from pc_builder.catalog import CATALOG
 from pc_builder.optimizer import choose_build, compatibility
-from pc_builder.prices import AkakceSource, Quote, SourceBusy, SourceUnavailable, parse_quote, safe_url
+from pc_builder.prices import AkakceSource, Quote, SourceBusy, SourceUnavailable, parse_quote, retry_delay, safe_url
 
 
 INDEX = {part.id: part for part in CATALOG}
@@ -125,6 +128,43 @@ class ParsingTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_retry_after_supports_seconds_dates_and_missing_values(self):
+        now = 1800000000
+        self.assertEqual(retry_delay('120', now), 120)
+        self.assertEqual(retry_delay(formatdate(now + 180, usegmt=True), now), 180)
+        self.assertEqual(retry_delay(None, now), 60)
+        self.assertEqual(retry_delay('not a date', now), 60)
+
+    def test_429_cooldown_survives_a_new_bot_process(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = AkakceSource(state_dir=directory)
+            response = Mock(status_code=429, headers={'Retry-After': '300'})
+            response.__enter__ = Mock(return_value=response)
+            response.__exit__ = Mock(return_value=False)
+            with patch('pc_builder.prices.requests.get', return_value=response) as get:
+                with self.assertRaises(SourceUnavailable) as first:
+                    source.quotes(CATALOG)
+                self.assertGreaterEqual(first.exception.retry_after, 299)
+                saved = json.loads((Path(directory) / 'akakce-cooldown.json').read_text())
+                self.assertGreater(saved['retry_at'], time.time())
+                restarted = AkakceSource(state_dir=directory)
+                with self.assertRaises(SourceUnavailable) as second:
+                    restarted.quotes(CATALOG)
+                self.assertEqual(second.exception.status_code, 429)
+                self.assertGreaterEqual(second.exception.retry_after, 299)
+                get.assert_called_once()
+
+    def test_expired_or_invalid_saved_cooldown_does_not_block_refresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / 'akakce-cooldown.json'
+            for content in ('not json', json.dumps({'version': 1, 'retry_at': time.time() - 1})):
+                file.write_text(content)
+                source = AkakceSource(state_dir=directory)
+                with patch.object(source, '_check_robots', side_effect=SourceUnavailable) as check:
+                    with self.assertRaises(SourceUnavailable):
+                        source.quotes(CATALOG)
+                    check.assert_called_once()
+
     def test_robots_txt_requests_plain_text_with_honest_user_agent(self):
         source = AkakceSource()
         response = Mock(status_code=200, encoding='utf-8')
@@ -181,6 +221,14 @@ class SourceTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
+    def test_429_exposes_wait_without_leaking_upstream_details(self):
+        error = SourceUnavailable('private details', status_code=429, retry_at=time.time() + 120)
+        response = create_app(FakeSource(error=error)).test_client().post('/api/build', json={'budget': 40000})
+        self.assertEqual(response.json['source_status'], 429)
+        self.assertGreaterEqual(response.json['retry_after'], 119)
+        self.assertGreaterEqual(int(response.headers['Retry-After']), 119)
+        self.assertNotIn('private', response.json['message'])
+
     def test_406_is_explained_and_not_marked_retryable(self):
         error = SourceUnavailable('private details', status_code=406)
         client = create_app(FakeSource(error=error)).test_client()
