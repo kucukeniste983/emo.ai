@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Run RIGLAB on the user's own computer, or print a build in the terminal.
+"""Manage owner-curated builds locally, or print a saved build in the terminal.
 
     python bot.py
     python bot.py --budget 40000 --resolution 1440p
 
-Network requests originate from the machine running this process. This script
-does not change proxies, bypass access controls, or route a hosted website
-through a visitor's browser.
+The default manual mode does not request prices from external websites.
+Optional HTTP/browser sources use the network of the machine running this
+process, preserving proxy settings and access restrictions.
 """
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -25,12 +25,12 @@ def budget_value(value):
         text = text.replace('.', '')
     try:
         amount = Decimal(text.replace(',', '.'))
-        if (not amount.is_finite() or not 15000 <= amount <= 150000
+        if (not amount.is_finite() or not 1000 <= amount <= 500000
                 or amount.as_tuple().exponent < -2):
             raise ValueError
         return amount
     except (InvalidOperation, ValueError):
-        raise argparse.ArgumentTypeError('Bütçe 15.000–150.000 TL arasında olmalı.') from None
+        raise argparse.ArgumentTypeError('Bütçe 1.000–500.000 TL arasında olmalı.') from None
 
 
 def port_value(value):
@@ -45,13 +45,13 @@ def port_value(value):
 
 def arguments(argv=None):
     parser = argparse.ArgumentParser(
-        description='RIGLAB yerel botu: fiyat istekleri bu programın çalıştığı bilgisayardan yapılır.',
+        description='RIGLAB: bütçelere göre kendi sistem ve ilan listelerini yönet.',
     )
     parser.add_argument('--budget', type=budget_value, metavar='TL', help='Terminalden sistem önerisi al; örnek: 40000')
     parser.add_argument('--resolution', choices=('1080p', '1440p', '4k'), default='1080p', help='Hedef oyun çözünürlüğü (varsayılan: 1080p)')
     parser.add_argument('--port', type=port_value, default=8765, help='Yerel sitenin portu (varsayılan: 8765)')
     parser.add_argument('--no-browser', action='store_true', help='Tarayıcıyı otomatik açma')
-    parser.add_argument('--source', choices=('http', 'browser'), default='http', help='Fiyat okuma yöntemi; BASLAT.cmd gerçek tarayıcıyı seçer')
+    parser.add_argument('--source', choices=('manual', 'http', 'browser'), default='manual', help='Varsayılan: elle eklenen sistemler. Otomatik kaynaklar isteğe bağlıdır.')
     parser.add_argument('--output', type=Path, metavar='DOSYA.json', help='Terminalde oluşan sistemi yeni bir JSON dosyasına kaydet')
     args = parser.parse_args(argv)
     if args.output is not None and args.budget is None:
@@ -65,6 +65,8 @@ def money(value):
 
 
 def make_source(args):
+    if args.source == 'manual':
+        return None
     if args.source == 'browser':
         from pc_builder.browser import BrowserAkakceSource
         return BrowserAkakceSource()
@@ -80,19 +82,23 @@ def run_cli(args, source=None):
     if args.output is not None and args.output.exists():
         print('Bu çıktı dosyası zaten var. Yeni bir dosya adı seç; mevcut dosya değiştirilmedi.', file=sys.stderr)
         return 4
-    print('Akakçe ürünleri kontrol ediliyor. Bu işlem yaklaşık bir dakika sürebilir.', flush=True)
-    source = source if source is not None else make_source(args)
-    try:
-        quotes = source.quotes(CATALOG)
-    except SourceUnavailable as error:
-        print(error.user_message, file=sys.stderr)
-        return 2
-    except SourceBusy:
-        print('Fiyatlar şu anda başka bir istek için güncelleniyor.', file=sys.stderr)
-        return 2
-    result = choose_build(CATALOG, quotes, args.budget, args.resolution)
+    if source is None and args.source == 'manual':
+        from pc_builder.manual import ManualStore
+        result = ManualStore().recommend(args.budget, args.resolution)
+    else:
+        print('Akakçe ürünleri kontrol ediliyor. Bu işlem yaklaşık bir dakika sürebilir.', flush=True)
+        source = source if source is not None else make_source(args)
+        try:
+            quotes = source.quotes(CATALOG)
+        except SourceUnavailable as error:
+            print(error.user_message, file=sys.stderr)
+            return 2
+        except SourceBusy:
+            print('Fiyatlar şu anda başka bir istek için güncelleniyor.', file=sys.stderr)
+            return 2
+        result = choose_build(CATALOG, quotes, args.budget, args.resolution)
     if result is None:
-        print('Doğrulanan ilanlarla bu bütçede eksiksiz ve uyumlu bir kasa bulunamadı.', file=sys.stderr)
+        print('Bu bütçe için uygun kayıt bulunamadı. Siteyi açıp Sistemleri yönet ekranından bir sistem ekle.', file=sys.stderr)
         return 3
     if args.output is not None:
         try:
@@ -109,7 +115,8 @@ def run_cli(args, source=None):
     print(f"\nToplam: {money(result['total'])}")
     print(f"Kalan:  {money(result['remaining'])}")
     checked = datetime.fromisoformat(result['oldest_price_check']).astimezone(timezone(timedelta(hours=3)))
-    print(f"Fiyat kontrolü: {checked:%d.%m.%Y %H:%M} TSİ")
+    label = 'Manuel kayıt güncellemesi' if result.get('mode') == 'manual' else 'Fiyat kontrolü'
+    print(f"{label}: {checked:%d.%m.%Y %H:%M} TSİ")
     print('Kargo, montaj, işletim sistemi ve çevre birimleri dahil değildir. Son fiyat ve stoğu ürün sayfasında kontrol et.')
     if args.output is not None:
         print(f'JSON kaydedildi: {args.output}')
@@ -128,21 +135,23 @@ def open_browser(url):
 def run_web(args, app=None, server_factory=None):
     if app is None:
         from main import create_app
-        app = create_app(source=make_source(args))
+        app = create_app(source=make_source(args), local_admin=True)
     if server_factory is None:
         from werkzeug.serving import make_server
         server_factory = make_server
     # Only this computer can connect. No remote origin/CORS access is enabled.
     app.config['TRUSTED_HOSTS'] = ['127.0.0.1', 'localhost']
+    app.config['LOCAL_ADMIN'] = True
     try:
         server = server_factory('127.0.0.1', args.port, app, threaded=True)
     except (OSError, SystemExit):
         print('Yerel sunucu başlatılamadı. Port kullanımda olabilir; --port 0 ile boş bir port seçebilirsin.', file=sys.stderr)
         return 4
     with server:
+        app.config['SESSION_COOKIE_NAME'] = f'riglab_{server.server_port}'
         url = f'http://127.0.0.1:{server.server_port}/'
         print(f'RIGLAB yerel botu çalışıyor: {url}', flush=True)
-        print('Fiyat istekleri bu bilgisayardan yapılacak. Durdurmak için Ctrl+C.', flush=True)
+        print('Sistemleri yonet dugmesinden butce, fiyat ve ilan baglantilarini ekleyebilirsin. Durdurmak icin Ctrl+C.', flush=True)
         if not args.no_browser:
             threading.Thread(target=open_browser, args=(url,), daemon=True).start()
         try:

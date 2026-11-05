@@ -25,7 +25,7 @@ class BotTests(unittest.TestCase):
                 self.assertEqual(bot.arguments(['--budget', value]).budget, Decimal(expected))
 
     def test_invalid_arguments_are_rejected_before_network_work(self):
-        for args in (['--budget', 'NaN'], ['--budget', '14999'], ['--budget', '150001'],
+        for args in (['--budget', 'NaN'], ['--budget', '999'], ['--budget', '500001'],
                      ['--budget', '20000.001'], ['--port', '-1'], ['--port', '65536'],
                      ['--resolution', '8k'], ['--output', 'file.json']):
             with self.subTest(args=args), redirect_stderr(StringIO()), self.assertRaises(SystemExit) as error:

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}"><meta name="robots" content="noindex">
+  <title>Sistemleri yönet — RIGLAB</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <script src="{{ url_for('static', filename='admin.js') }}" defer></script>
+</head>
+<body>
+  <header class="admin-header wrap"><a class="brand" href="/">riglab<span class="brand-dot">.</span></a><span class="admin-chip">MANUEL YÖNETİM</span><a class="admin-site-link" href="/" target="_blank" rel="noopener">Siteyi aç</a>{% if not local %}<button id="logout" class="quiet-button">Çıkış yap</button>{% endif %}</header>
+  <main class="wrap admin-main">
+    <div class="admin-intro"><div><span class="eyebrow">BAĞLANTILAR SENDE. KONTROL SENDE.</span><h1>Sistemlerini sen hazırla.</h1><p>Bütçe aralığını belirle, fiyatları ve Akakçe bağlantılarını ekle.<br>Site, bütçeye uyan yayınlanmış kayıtlardan öneri sunsun.</p></div><span class="manual-status">Fiyatlar elle yönetilir</span></div>
+    <p id="admin-notice" class="admin-notice" role="status" hidden></p>
+    <div class="admin-grid">
+      <aside class="catalog-panel">
+        <div class="catalog-heading"><h2>Sistemlerim <span id="system-count">0</span></h2><button id="new-system" class="compact-primary" type="button">+ Yeni sistem</button></div>
+        <p id="catalog-empty" class="catalog-empty">Henüz sistem eklemedin. İlk bütçe aralığını sağdaki formdan oluştur.</p>
+        <div id="system-list"></div>
+        <div class="backup-panel"><h3>Kayıtların sende kalsın.</h3><p>Kayıtlar bu bilgisayarda saklanır. Taşımak veya yedeklemek için dosya indir.</p><div class="backup-actions"><a href="/api/admin/export" download>Yedek indir</a><button id="import-button" type="button">Yedek yükle</button></div><input id="import-file" type="file" accept=".json,application/json" hidden></div>
+      </aside>
+
+      <section class="editor-panel" aria-labelledby="editor-title">
+        <div class="editor-heading"><div><span id="editor-state" class="field-label">YENİ SİSTEM</span><h2 id="editor-title">Bir bütçeye, bir sistem.</h2></div><span id="editor-status" class="status-badge draft">Taslak</span></div>
+        <form id="system-form">
+          <label class="admin-field">Sistem adı<input id="system-name" maxlength="120" required placeholder="Örn. 30–40 bin TL oyun sistemi"></label>
+          <div class="admin-fields-grid">
+            <label class="admin-field">Alt bütçe (TL)<input id="budget-min" type="number" min="1000" max="500000" step="0.01" value="30000" required></label>
+            <label class="admin-field">Üst bütçe (TL)<input id="budget-max" type="number" min="1000" max="500000" step="0.01" value="40000" required></label>
+            <label class="admin-field">Hedef çözünürlük<select id="system-resolution"><option value="any">Tüm çözünürlükler</option><option value="1080p">1080p</option><option value="1440p">1440p</option><option value="4k">4K</option></select></label>
+            <label class="admin-field">Öneri önceliği (0–100)<input id="system-priority" type="number" min="0" max="100" step="1" value="50" required></label>
+          </div>
+          <p class="admin-help">Birden fazla kayıt uyarsa yüksek öncelikli olan seçilir. Sistem toplamı kullanıcının bütçesini aşamaz.</p>
+          <label class="admin-field">Ne eklemek istiyorsun?<select id="system-kind"><option value="parts">Parçaları tek tek ekle</option><option value="ready">Tek bağlantıyla hazır sistem ekle</option></select></label>
+          <div id="parts-editor">
+            {% for key, label in categories.items() %}
+            <fieldset class="manual-part" data-category="{{ key }}"><legend><span class="part-number">{{ '%02d'|format(loop.index) }}</span> {{ label }}{% if key == 'cooler' %} <small>isteğe bağlı</small>{% endif %}</legend><div class="entry-fields">
+              <label class="admin-field">Ürün adı<input class="entry-name" aria-label="{{ label }} ürün adı" maxlength="180" placeholder="Tam model adını yaz"></label>
+              <label class="admin-field">Fiyat (TL)<input class="entry-price" aria-label="{{ label }} fiyatı" type="number" min="0" max="500000" step="0.01" placeholder="0,00"></label>
+              <label class="admin-field entry-link">Akakçe ürün bağlantısı<input class="entry-url" aria-label="{{ label }} bağlantısı" type="url" maxlength="2048" placeholder="https://www.akakce.com/…"></label>
+            </div></fieldset>
+            {% endfor %}
+          </div>
+          <fieldset id="ready-editor" class="manual-part" hidden><legend>Hazır sistem ilanı</legend><div class="entry-fields"><label class="admin-field">Sistemin fiyatı (TL)<input id="ready-price" type="number" min="0" max="500000" step="0.01" placeholder="Örn. 35000"></label><label class="admin-field">Akakçe ürün bağlantısı<input id="ready-url" type="url" maxlength="2048" placeholder="https://www.akakce.com/…"></label></div></fieldset>
+          <label class="admin-field">Kullanıcıya notun <span class="optional">isteğe bağlı</span><textarea id="system-notes" rows="3" maxlength="2000" placeholder="Örn. İşlemci soğutucusu kutuya dahil. Kargo fiyatlarını kontrol et."></textarea></label>
+          <label class="confirmation"><input id="compatibility-confirmed" type="checkbox"><span>İlanları, fiyatları ve donanım uyumluluğunu kontrol ettim.<small>Bu manuel kayıtta donanım kontrolünü site otomatik yapmaz. Yayınlamak için bu onay gerekli.</small></span></label>
+          <div class="editor-actions"><div><span class="field-label">GİRİLEN TOPLAM</span><strong id="editor-total">₺0,00</strong></div><button type="submit" class="quiet-button" data-action="draft">Taslak kaydet</button><button type="submit" class="compact-primary" data-action="publish">Kaydet ve yayınla</button></div>
+        </form>
+      </section>
+    </div>
+  </main>
+  <template id="system-card"><article class="system-card"><div class="card-status-line"><span class="status-badge"></span><span class="card-resolution"></span></div><h3 class="card-name"></h3><p class="card-range"></p><div class="card-total"></div><div class="card-actions"><button type="button" data-action="edit">Düzenle</button><button type="button" data-action="toggle"></button><button type="button" data-action="delete" class="delete-button">Sil</button></div></article></template>
+</body>
+</html>

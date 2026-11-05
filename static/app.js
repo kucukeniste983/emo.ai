@@ -6,6 +6,9 @@ const range = $('#budget-range');
 const form = $('#build-form');
 const button = $('#build-button');
 const panel = $('#result-panel');
+const manualMode = form.dataset.mode === 'manual';
+const minBudget = Number(form.dataset.minBudget || 15000);
+const maxBudget = Number(form.dataset.maxBudget || 150000);
 const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 });
 const integer = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
 const symbols = { cpu: 'CPU', gpu: 'GPU', motherboard: 'MB', ram: 'RAM', ssd: 'SSD', psu: 'PSU', case: 'PC' };
@@ -20,7 +23,7 @@ function readBudget() {
 
 function syncBudget(value, format = true) {
   if (format) budget.value = integer.format(value);
-  if (Number.isFinite(value)) range.value = Math.min(150000, Math.max(15000, value));
+  if (Number.isFinite(value)) range.value = Math.min(maxBudget, Math.max(minBudget, value));
   document.querySelectorAll('[data-budget]').forEach((preset) => {
     const selected = Number(preset.dataset.budget) === value;
     preset.classList.toggle('selected', selected);
@@ -52,7 +55,7 @@ function state(name) {
 
 function errorState(message, kind, retryable = true) {
   state('error-state');
-  $('#error-title').textContent = kind === 'no_matching_build' ? 'Biraz farklı düşünelim.' : 'Fiyatları doğrulayamadık.';
+  $('#error-title').textContent = kind === 'no_matching_build' ? 'Uygun bir kayıt bulunamadı.' : (manualMode ? 'Kayıtlar yüklenemedi.' : 'Fiyatları doğrulayamadık.');
   $('#error-message').textContent = message;
   $('#retry-button').hidden = !retryable;
   $('#error-title').focus({ preventScroll: true });
@@ -60,6 +63,7 @@ function errorState(message, kind, retryable = true) {
 
 function renderBuild(data) {
   currentBuild = data;
+  $('#result-title').textContent = data.system_name || 'Senin oyun sistemin.';
   const list = $('#parts-list');
   list.replaceChildren();
   data.parts.forEach((part) => {
@@ -84,7 +88,7 @@ function renderBuild(data) {
   $('#budget-fill').style.width = `${used}%`;
   $('.budget-meter').setAttribute('aria-valuenow', String(used));
   const checked = new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }).format(new Date(data.oldest_price_check));
-  $('#price-time').textContent = `Fiyat kontrolü: ${checked}`;
+  $('#price-time').textContent = `${data.mode === 'manual' ? 'Kayıt güncellemesi' : 'Fiyat kontrolü'}: ${checked}`;
   [['#compatibility-list', data.checks], ['#warning-list', data.warnings]].forEach(([selector, items]) => {
     $(selector).replaceChildren(...items.map((text) => {
       const li = document.createElement('li');
@@ -100,8 +104,8 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (running) return;
   const value = readBudget();
-  if (!Number.isFinite(value) || value < 15000 || value > 150000) {
-    $('#budget-error').textContent = '15.000–150.000 TL arasında bir bütçe gir.';
+  if (!Number.isFinite(value) || value < minBudget || value > maxBudget) {
+    $('#budget-error').textContent = `${integer.format(minBudget)}–${integer.format(maxBudget)} TL arasında bir bütçe gir.`;
     $('#budget-error').hidden = false;
     budget.setAttribute('aria-invalid', 'true');
     budget.focus();
@@ -113,7 +117,7 @@ form.addEventListener('submit', async (event) => {
   form.querySelectorAll('input, button[type="button"]').forEach((control) => { control.disabled = true; });
   $('#copy-build').textContent = 'Listeyi kopyala';
   clearTimeout(copyTimer);
-  button.querySelector('.button-label').textContent = 'Parçalar kontrol ediliyor';
+  button.querySelector('.button-label').textContent = manualMode ? 'Sistemler seçiliyor' : 'Parçalar kontrol ediliyor';
   button.querySelector('.button-arrow').hidden = true;
   button.querySelector('.spinner').hidden = false;
   panel.setAttribute('aria-busy', 'true');
@@ -153,7 +157,8 @@ $('#copy-build').addEventListener('click', async () => {
   if (!currentBuild) return;
   const text = ['RIGLAB — Oyun sistemi', `Bütçe: ${money.format(currentBuild.budget)} / ${currentBuild.resolution}`, '',
     ...currentBuild.parts.map((part) => `${part.category_name}: ${part.name}\n${money.format(part.price)} — ${part.url}`),
-    '', `Toplam: ${money.format(currentBuild.total)}`, `Fiyat kontrolü: ${currentBuild.oldest_price_check}`,
+    '', `Toplam: ${money.format(currentBuild.total)}`, `${currentBuild.mode === 'manual' ? 'Manuel kayıt güncellemesi' : 'Fiyat kontrolü'}: ${currentBuild.oldest_price_check}`,
+    ...(currentBuild.mode === 'manual' ? ['Fiyatlar elle girildi; otomatik doğrulanmadı.'] : []),
     'Fiyat ve stok değişebilir. Kargo, montaj, işletim sistemi ve çevre birimleri dahil değildir.'].join('\n');
   try {
     await navigator.clipboard.writeText(text);

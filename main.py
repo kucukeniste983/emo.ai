@@ -1,25 +1,38 @@
 import os
+import secrets
+import sqlite3
 from decimal import Decimal, InvalidOperation
 
 from flask import Flask, jsonify, render_template, request
 
 from pc_builder.catalog import CATALOG, CATEGORIES
 from pc_builder.optimizer import choose_build
-from pc_builder.prices import AkakceSource, SourceBusy, SourceUnavailable
+from pc_builder.prices import SourceBusy, SourceUnavailable
+from pc_builder.manual import ManualError, ManualStore, MIN_BUDGET, MAX_BUDGET
+from pc_builder.admin import register_admin
 
 
-def create_app(source=None):
+def create_app(source=None, *, data_dir=None, local_admin=False, admin_password=None):
     app = Flask(__name__)
     app.config['MAX_CONTENT_LENGTH'] = 4096
-    source = source or AkakceSource()
+    store = ManualStore(data_dir=data_dir)
+    manual_mode = source is None
+    app.config.update(SECRET_KEY=os.environ.get('RIGLAB_SESSION_SECRET') or secrets.token_hex(32),
+                      SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict',
+                      SESSION_COOKIE_SECURE=os.environ.get('RIGLAB_COOKIE_SECURE') == '1',
+                      LOCAL_ADMIN=local_admin, ADMIN_PASSWORD=admin_password if admin_password is not None else os.environ.get('RIGLAB_ADMIN_PASSWORD'))
+    app.extensions['manual_store'] = store
+    register_admin(app, store)
+    mode = 'manual' if manual_mode else getattr(source, 'mode', 'http')
+    minimum, maximum = (MIN_BUDGET, MAX_BUDGET) if manual_mode else (15000, 150000)
 
     @app.get('/')
     def home():
-        return render_template('index.html', categories=CATEGORIES, price_mode=getattr(source, 'mode', 'http'))
+        return render_template('index.html', categories=CATEGORIES, price_mode=mode, min_budget=minimum, max_budget=maximum)
 
     @app.get('/api/health')
     def health():
-        return jsonify(status='ok', price_source='Akakçe', price_mode=getattr(source, 'mode', 'http'))
+        return jsonify(status='ok', price_source='Manuel katalog' if manual_mode else 'Akakçe', price_mode=mode)
 
     @app.post('/api/build')
     def build():
@@ -30,13 +43,18 @@ def create_app(source=None):
             if isinstance(data.get('budget'), bool):
                 raise ValueError
             budget = Decimal(str(data.get('budget')))
-            if not budget.is_finite() or not 15000 <= budget <= 150000 or budget.as_tuple().exponent < -2:
+            if not budget.is_finite() or not minimum <= budget <= maximum or budget.as_tuple().exponent < -2:
                 raise ValueError
         except (InvalidOperation, ValueError, TypeError):
-            return jsonify(error='invalid_budget', message='15.000–150.000 TL arasında bir bütçe gir.'), 400
+            return jsonify(error='invalid_budget', message=f'{minimum:,}–{maximum:,} TL arasında bir bütçe gir.'.replace(',', '.')), 400
         resolution = data.get('resolution', '1080p')
         if resolution not in ('1080p', '1440p', '4k'):
             return jsonify(error='invalid_resolution', message='Geçerli bir çözünürlük seç.'), 400
+        if manual_mode:
+            result = store.recommend(budget, resolution)
+            if result is None:
+                return jsonify(error='no_matching_build', message='Bu bütçe ve çözünürlük için yayında bir sistem bulunamadı. Yönetim ekranından uygun fiyatlı bir kayıt eklenmeli.', retryable=False), 422
+            return jsonify(result)
         try:
             quotes = source.quotes(CATALOG)
         except SourceBusy:
@@ -58,11 +76,20 @@ def create_app(source=None):
     def too_large(_error):
         return jsonify(error='invalid_input', message='İstek çok büyük.'), 413
 
+    @app.errorhandler(ManualError)
+    def manual_error(error):
+        return jsonify(error='invalid_catalog', message=str(error)), error.status
+
+    @app.errorhandler(sqlite3.DatabaseError)
+    def catalog_storage_error(_error):
+        return jsonify(error='storage_error', message='Sistem kayıtlarına erişilemiyor. Veri klasörünün yazma iznini kontrol et.'), 503
+
     @app.after_request
     def headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        if request.path.startswith('/api/'):
+        response.headers['X-Frame-Options'] = 'DENY'
+        if request.path.startswith(('/api/', '/admin')):
             response.headers['Cache-Control'] = 'no-store'
         return response
 
