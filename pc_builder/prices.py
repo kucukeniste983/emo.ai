@@ -4,10 +4,12 @@ Live selectors/schema still need validation against Akakce after network access
 is enabled. Missing or changed structured data makes a product unavailable.
 """
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from email.utils import parsedate_to_datetime
+from itertools import zip_longest
 import json
 import math
 import os
@@ -48,6 +50,14 @@ def retry_delay(value, now=None):
     return 60
 
 
+def round_robin_components(components):
+    """Read one of every required category before exploring upgrades."""
+    groups = {}
+    for component in components:
+        groups.setdefault(component.category, []).append(component)
+    return tuple(component for row in zip_longest(*groups.values()) for component in row if component is not None)
+
+
 class SourceUnavailable(Exception):
     def __init__(self, message='Source unavailable', *, status_code=None, retry_at=None):
         super().__init__(message)
@@ -57,6 +67,10 @@ class SourceUnavailable(Exception):
     @property
     def retry_after(self):
         return max(1, math.ceil(self.retry_at - time.time())) if self.retry_at is not None else None
+
+    @property
+    def retryable(self):
+        return self.status_code not in (401, 403, 406)
 
     @property
     def user_message(self):
@@ -153,6 +167,8 @@ def parse_quote(html, url, component):
 
 class AkakceSource:
     """Per-process cache, one refresh at a time, up to three bounded workers."""
+    mode = 'http'
+    refresh_timeout = 80
     def __init__(self, state_dir=None):
         self._refresh = threading.Lock()
         self._rate = threading.Lock()
@@ -200,6 +216,16 @@ class AkakceSource:
                 except OSError:
                     pass
 
+    def _session(self):
+        return nullcontext()
+
+    def _request(self, *args, **kwargs):
+        return requests.get(*args, **kwargs)
+
+    def _collect(self, components):
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            return dict(pool.map(self._quote, components))
+
     def _read(self, url, robots=False):
         for _ in range(4):
             if self._stop.is_set() or time.monotonic() > self._deadline or not safe_url(url):
@@ -215,7 +241,7 @@ class AkakceSource:
                 raise SourceUnavailable('Request time budget exhausted')
             try:
                 accept = 'text/plain, */*;q=0.5' if robots else 'text/html, application/xhtml+xml, */*;q=0.5'
-                with requests.get(url, headers={'User-Agent': AGENT, 'Accept': accept},
+                with self._request(url, headers={'User-Agent': AGENT, 'Accept': accept},
                                   timeout=(4, 10), allow_redirects=False, stream=True) as response:
                     if response.status_code in (301, 302, 303, 307, 308):
                         url = urljoin(url, response.headers.get('Location', ''))
@@ -286,17 +312,17 @@ class AkakceSource:
             return dict(self._cache)
         if self._failure is None or self._failure.status_code == 429:
             self._restore_cooldown()
-        if self._failure is not None and (self._failure.status_code in (401, 403, 406) or time.monotonic() < self._retry_after):
+        if self._failure is not None and (not self._failure.retryable or time.monotonic() < self._retry_after):
             raise self._failure
         if not self._refresh.acquire(blocking=False):
             raise SourceBusy
         try:
             self._stop.clear()
             started = time.monotonic()
-            self._deadline = started + 80
-            self._check_robots()
-            with ThreadPoolExecutor(max_workers=3) as pool:
-                results = dict(pool.map(self._quote, components))
+            self._deadline = started + self.refresh_timeout
+            with self._session():
+                self._check_robots()
+                results = self._collect(round_robin_components(components))
             verified = {key: quote for key, quote in results.items() if quote is not None}
             if not verified:
                 raise SourceUnavailable('No supported verified price data')

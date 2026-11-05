@@ -8,6 +8,21 @@ Oyun odaklı, yalnızca kasa içeren bir PC toplama prototipi. Kullanıcı 15.00
 
 `bot.py` bu projenin dosyalarıyla birlikte çalışır. Tek başına başka bir klasöre kopyalama. Site ve fiyat botu kendi bilgisayarında çalıştığında Akakçe istekleri de o bilgisayarın internet bağlantısından gider. Uzak sunucuya yayımlanan site, ziyaretçinin bağlantısını kendiliğinden kullanmaz. Proxy ayarları ve TLS doğrulaması değiştirilmez.
 
+**Windows'ta önerilen başlangıç:** ZIP'i tamamen çıkar, `BASLAT.cmd` dosyasının bulunduğu klasöre gir ve dosyaya çift tıkla. Başlatıcı kendi klasörüne geçer, `.venv` oluşturur, sabitlenmiş bağımlılıkları kurar ve siteyi boş bir yerel portta açar. Python kurulu ve PATH'te olmalı; Edge veya Chrome da kurulu olmalıdır. Terminali açık tut. İlk bağımlılık kurulumu zaman alabilir.
+
+Bu başlatıcı `--source browser` kullanır: fiyat okuma sırasında ayrı bir Edge/Chrome penceresi açılır; JavaScript ile oluşan DOM okunur. Kişisel tarayıcı profili, giriş bilgileri veya çerezler kopyalanmaz. Tarayıcı gerçek kimliğine `Riglab/0.1` ekleyerek kendini açıkça tanıtır. TLS ve proxy ayarları korunur; robots.txt ve aynı kalıcı bekleme kuralları uygulanır. HTTP reddi, 429 veya doğrulama ekranında işlem durur. Bu mod bir erişim engelini kaldırma garantisi değildir; **gerçek Akakçe verileriyle başarı henüz doğrulanmadı**.
+
+46 birim testine ek olarak gerçek Chromium'da, yalnızca sentetik yerel yanıtlarla, JavaScript ürünlerinin yedi parçalı sisteme dönüşmesi ve 429 sonrası tarayıcı açılmasının durması doğrulandı. Playwright ve bağımlılıklarının Windows/Python 3.15 için hazır wheel dosyaları bulunduğu kontrol edildi. `BASLAT.cmd` bu Linux ortamında yerel Windows çalıştırmasıyla sınanamadı.
+
+Tarayıcı modunu komut satırından kullanmak için:
+
+```bash
+python -m pip install -r requirements-browser.txt
+python bot.py --source browser --port 0
+```
+
+Başlatıcıyı kullanmayanlar için normal HTTP yolu aşağıdadır:
+
 Windows / PowerShell, Python 3.12 kurulu olduğunda proje klasöründe:
 
 ```powershell
@@ -89,6 +104,13 @@ PYTHONDONTWRITEBYTECODE=1 /workspace/.venvs/emo.ai/bin/python -m unittest discov
 node --check static/app.js
 ```
 
-38 test; bütçe hesabı, eksik parça, uyumsuz soket/bellek, güç ve kasa boyutu, SKU/fiyat ayrıştırma, önbellek, kaynak kesintisi, API ve bot komut satırı doğrulamasını kapsar. Botun dosya koruması, JSON çıktısı, yalnızca yerel sunucu başlatması, robots.txt içerik türü, reddedilen isteğin yinelenmemesi, Retry-After biçimleri ve yeniden başlatmada beklemenin korunması da kontrol edilir. Testler canlı Akakçe erişimi gerektirmez ve bunun çalıştığına kanıt değildir.
+46 test; bütçe hesabı, eksik parça, uyumsuz soket/bellek, güç ve kasa boyutu, SKU/fiyat ayrıştırma, önbellek, kaynak kesintisi, API ve bot komut satırı doğrulamasını kapsar. Botun dosya koruması, JSON çıktısı, yalnızca yerel sunucu başlatması, robots.txt içerik türü, reddedilen isteğin yinelenmemesi, Retry-After biçimleri, yeniden başlatmada beklemenin korunması ve tarayıcı sağlayıcısı da kontrol edilir. Testler canlı Akakçe erişimi gerektirmez ve bunun çalıştığına kanıt değildir.
+
+Gerçek tarayıcı / JavaScript bütünleşme testi (sadece sentetik yanıtlar):
+
+```bash
+python -m pip install -r requirements-browser.txt
+python tests/browser_integration.py --executable /usr/bin/chromium
+```
 
 Masaüstü ve mobil Chromium kontrolleri ayrıca çalıştırıldı: form, hata durumu, yatay taşma ve sentetik yanıtla yedi parçalı sonuç görünümü doğrulandı. Gerçek `/api/build` isteğinin ağ engelinde fiyat üretmeden 503 vermesi de kontrol edildi.

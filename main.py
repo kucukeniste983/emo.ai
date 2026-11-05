@@ -15,11 +15,11 @@ def create_app(source=None):
 
     @app.get('/')
     def home():
-        return render_template('index.html', categories=CATEGORIES)
+        return render_template('index.html', categories=CATEGORIES, price_mode=getattr(source, 'mode', 'http'))
 
     @app.get('/api/health')
     def health():
-        return jsonify(status='ok', price_source='Akakçe')
+        return jsonify(status='ok', price_source='Akakçe', price_mode=getattr(source, 'mode', 'http'))
 
     @app.post('/api/build')
     def build():
@@ -44,7 +44,7 @@ def create_app(source=None):
         except SourceUnavailable as error:
             response = jsonify(error='source_unavailable', message=error.user_message,
                                source_status=error.status_code, retry_after=error.retry_after,
-                               retryable=error.status_code not in (401, 403, 406))
+                               retryable=error.retryable)
             response.status_code = 503
             if error.status_code == 429:
                 response.headers['Retry-After'] = str(error.retry_after)

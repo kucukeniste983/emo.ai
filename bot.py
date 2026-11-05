@@ -51,6 +51,7 @@ def arguments(argv=None):
     parser.add_argument('--resolution', choices=('1080p', '1440p', '4k'), default='1080p', help='Hedef oyun çözünürlüğü (varsayılan: 1080p)')
     parser.add_argument('--port', type=port_value, default=8765, help='Yerel sitenin portu (varsayılan: 8765)')
     parser.add_argument('--no-browser', action='store_true', help='Tarayıcıyı otomatik açma')
+    parser.add_argument('--source', choices=('http', 'browser'), default='http', help='Fiyat okuma yöntemi; BASLAT.cmd gerçek tarayıcıyı seçer')
     parser.add_argument('--output', type=Path, metavar='DOSYA.json', help='Terminalde oluşan sistemi yeni bir JSON dosyasına kaydet')
     args = parser.parse_args(argv)
     if args.output is not None and args.budget is None:
@@ -63,16 +64,24 @@ def money(value):
     return number + ' TL'
 
 
+def make_source(args):
+    if args.source == 'browser':
+        from pc_builder.browser import BrowserAkakceSource
+        return BrowserAkakceSource()
+    from pc_builder.prices import AkakceSource
+    return AkakceSource()
+
+
 def run_cli(args, source=None):
     from pc_builder.catalog import CATALOG
     from pc_builder.optimizer import choose_build
-    from pc_builder.prices import AkakceSource, SourceBusy, SourceUnavailable
+    from pc_builder.prices import SourceBusy, SourceUnavailable
 
     if args.output is not None and args.output.exists():
         print('Bu çıktı dosyası zaten var. Yeni bir dosya adı seç; mevcut dosya değiştirilmedi.', file=sys.stderr)
         return 4
     print('Akakçe ürünleri kontrol ediliyor. Bu işlem yaklaşık bir dakika sürebilir.', flush=True)
-    source = source if source is not None else AkakceSource()
+    source = source if source is not None else make_source(args)
     try:
         quotes = source.quotes(CATALOG)
     except SourceUnavailable as error:
@@ -119,7 +128,7 @@ def open_browser(url):
 def run_web(args, app=None, server_factory=None):
     if app is None:
         from main import create_app
-        app = create_app()
+        app = create_app(source=make_source(args))
     if server_factory is None:
         from werkzeug.serving import make_server
         server_factory = make_server

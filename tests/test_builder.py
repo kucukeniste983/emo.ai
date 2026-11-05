@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 from main import create_app
 from pc_builder.catalog import CATALOG
 from pc_builder.optimizer import choose_build, compatibility
-from pc_builder.prices import AkakceSource, Quote, SourceBusy, SourceUnavailable, parse_quote, retry_delay, safe_url
+from pc_builder.prices import AkakceSource, Quote, SourceBusy, SourceUnavailable, parse_quote, retry_delay, round_robin_components, safe_url
 
 
 INDEX = {part.id: part for part in CATALOG}
@@ -128,6 +128,12 @@ class ParsingTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_each_category_is_visited_before_optional_upgrades(self):
+        ordered = round_robin_components(CATALOG)
+        self.assertEqual(len(ordered), len(CATALOG))
+        self.assertEqual(len({part.category for part in ordered[:7]}), 7)
+        self.assertEqual({part.id for part in ordered}, {part.id for part in CATALOG})
+
     def test_retry_after_supports_seconds_dates_and_missing_values(self):
         now = 1800000000
         self.assertEqual(retry_delay('120', now), 120)

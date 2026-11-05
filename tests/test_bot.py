@@ -15,6 +15,10 @@ from pc_builder.prices import Quote, SourceUnavailable
 
 
 class BotTests(unittest.TestCase):
+    def test_browser_option_chooses_browser_provider(self):
+        from pc_builder.browser import BrowserAkakceSource
+        self.assertIsInstance(bot.make_source(bot.arguments(['--source', 'browser'])), BrowserAkakceSource)
+
     def test_budget_accepts_plain_and_turkish_number_formats(self):
         for value, expected in (('40000', '40000'), ('40.000', '40000'), ('40.000,50', '40000.50'), ('40000.50', '40000.50')):
             with self.subTest(value=value):
