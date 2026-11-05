@@ -20,13 +20,13 @@ class BotTests(unittest.TestCase):
         self.assertIsInstance(bot.make_source(bot.arguments(['--source', 'browser'])), BrowserAkakceSource)
 
     def test_budget_accepts_plain_and_turkish_number_formats(self):
-        for value, expected in (('40000', '40000'), ('40.000', '40000'), ('40.000,50', '40000.50'), ('40000.50', '40000.50')):
+        for value, expected in (('40000', '40000'), ('40.000', '40000'), ('40.000,00', '40000.00'), ('40000.00', '40000.00')):
             with self.subTest(value=value):
                 self.assertEqual(bot.arguments(['--budget', value]).budget, Decimal(expected))
 
     def test_invalid_arguments_are_rejected_before_network_work(self):
         for args in (['--budget', 'NaN'], ['--budget', '999'], ['--budget', '500001'],
-                     ['--budget', '20000.001'], ['--port', '-1'], ['--port', '65536'],
+                     ['--budget', '20000.001'], ['--budget', '35000'], ['--budget', '40000.50'], ['--port', '-1'], ['--port', '65536'],
                      ['--resolution', '8k'], ['--output', 'file.json']):
             with self.subTest(args=args), redirect_stderr(StringIO()), self.assertRaises(SystemExit) as error:
                 bot.arguments(args)

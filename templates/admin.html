@@ -27,8 +27,8 @@
         <form id="system-form">
           <label class="admin-field">Sistem adı<input id="system-name" maxlength="120" required placeholder="Örn. 30–40 bin TL oyun sistemi"></label>
           <div class="admin-fields-grid">
-            <label class="admin-field">Alt bütçe (TL)<input id="budget-min" type="number" min="1000" max="500000" step="0.01" value="30000" required></label>
-            <label class="admin-field">Üst bütçe (TL)<input id="budget-max" type="number" min="1000" max="500000" step="0.01" value="40000" required></label>
+            <label class="admin-field">Alt bütçe (TL)<select id="budget-min" required>{% for value in budget_options %}<option value="{{ value }}"{% if value == 30000 %} selected{% endif %}>{{ "{:,}".format(value).replace(",", ".") }} TL</option>{% endfor %}</select></label>
+            <label class="admin-field">Üst bütçe (TL)<select id="budget-max" required>{% for value in budget_options %}<option value="{{ value }}"{% if value == 40000 %} selected{% endif %}>{{ "{:,}".format(value).replace(",", ".") }} TL</option>{% endfor %}</select></label>
             <label class="admin-field">Hedef çözünürlük<select id="system-resolution"><option value="any">Tüm çözünürlükler</option><option value="1080p">1080p</option><option value="1440p">1440p</option><option value="4k">4K</option></select></label>
             <label class="admin-field">Öneri önceliği (0–100)<input id="system-priority" type="number" min="0" max="100" step="1" value="50" required></label>
           </div>

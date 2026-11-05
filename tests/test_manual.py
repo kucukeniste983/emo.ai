@@ -5,6 +5,7 @@ import re
 import tempfile
 import unittest
 from unittest.mock import patch
+from bs4 import BeautifulSoup
 
 from main import create_app
 from pc_builder.catalog import CATEGORIES
@@ -123,6 +124,33 @@ class ManualApiTests(unittest.TestCase):
         page = self.client.get('/admin')
         self.token = re.search(r'name="csrf-token" content="([^"]+)"', page.get_data(as_text=True)).group(1)
         self.headers = {'X-CSRF-Token': self.token}
+
+    def test_public_and_admin_only_offer_the_requested_budget_options(self):
+        expected = [20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000,
+                    100000, 120000, 140000, 160000, 200000, 250000]
+        public = BeautifulSoup(self.client.get('/').data, 'html.parser')
+        self.assertEqual([int(option['value']) for option in public.select('#budget option')], expected)
+        self.assertIsNone(public.select_one('#budget-range'))
+        self.assertEqual(public.select_one('#budget').name, 'select')
+        admin = BeautifulSoup(self.client.get('/admin').data, 'html.parser')
+        for selector in ('#budget-min', '#budget-max'):
+            self.assertEqual([int(option['value']) for option in admin.select(selector + ' option')], expected)
+
+    def test_build_rejects_budgets_between_the_fixed_options(self):
+        for budget in (25000, 35000, 110000, 180000, 300000, '40000.01'):
+            with self.subTest(budget=budget):
+                response = self.client.post('/api/build', json={'budget': budget})
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json['error'], 'invalid_budget')
+
+    def test_250000_option_can_recommend_a_matching_saved_system(self):
+        payload = record(kind='ready', budget_min='200000', budget_max='250000',
+                         parts=[{'category': 'system', 'name': 'Yüksek bütçeli test', 'price': '245000', 'url': URL}])
+        self.assertEqual(self.client.post('/api/admin/systems', json=payload, headers=self.headers).status_code, 201)
+        response = self.client.post('/api/build', json={'budget': 250000})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['total'], 245000)
+        self.assertEqual(response.json['remaining'], 5000)
 
     def test_end_to_end_is_offline_and_persists(self):
         with patch('requests.get', side_effect=AssertionError('Unexpected network')), patch('pc_builder.prices.AkakceSource.quotes', side_effect=AssertionError('Unexpected scraper')):

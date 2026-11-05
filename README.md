@@ -24,7 +24,7 @@ Python 3.12 ve sonrası için hazırlanmıştır; önceki Windows/Python 3.15 ku
 
 ## Sistem ekleme
 
-- Sistem adı ve alt/üst bütçe sınırlarını gir (1.000–500.000 TL).
+- Sistem adı ve alt/üst bütçe sınırlarını listeden seç. Seçenekler: **20.000, 30.000, 40.000, 50.000, 60.000, 70.000, 80.000, 90.000, 100.000, 120.000, 140.000, 160.000, 200.000 ve 250.000 TL**. Ziyaretçiler de yalnızca bu 14 tutardan birini seçebilir; serbest bütçe girişi ve kaydırıcı kaldırıldı. Parça fiyatları bu kısıtlamadan bağımsızdır.
 - Hedef çözünürlüğü seç veya tüm çözünürlükler için yayınla.
 - **Parçaları tek tek ekle:** işlemci, ekran kartı, anakart, RAM, SSD, PSU ve kasa için ad, fiyat ve HTTPS Akakçe ürün bağlantısı gir. İşlemci soğutucusu isteğe bağlıdır.
 - **Tek bağlantıyla hazır sistem ekle:** hazır sistemin fiyatını ve Akakçe ürün bağlantısını gir.
@@ -36,7 +36,7 @@ Fiyatı sıfır girilen bir parça dahil/hediye ürün olarak kullanılabilir; y
 
 Birden fazla sistem uyarsa önce yüksek **Öneri önceliği**, sonra daha yüksek alt bütçe sınırı seçilir. Kaydın aralığı, çözünürlüğü ve toplam tutarı kullanıcının bütçesine uymalıdır. Daha pahalı bir sistem veya taslak kayıt önerilmez. Hiç kayıt yoksa ürün ve fiyat uydurulmaz.
 
-**Düzenle**, **Yayından kaldır / Yayınla** ve **Sil** işlemleri yönetim listesindedir. Başka bir pencerede değişen kaydın eski sürümüyle üzerine yazılması engellenir.
+**Düzenle**, **Yayından kaldır / Yayınla** ve **Sil** işlemleri yönetim listesindedir. Başka bir pencerede değişen kaydın eski sürümüyle üzerine yazılması engellenir. Önceden kaydedilmiş farklı bütçe aralıkları silinmez; düzenleyicide önceki değer olarak korunur, yeni seçimler yalnızca listedeki tutarlardan yapılır.
 
 ## Kayıtlar ve yedek
 
@@ -70,7 +70,7 @@ node --check static/app.js
 node --check static/admin.js
 ```
 
-60 test; bütçe hesabı, manuel yayın/taslak kuralları, fiyat/URL doğrulaması, öncelik ve çözünürlük seçimi, düzenleme çakışmaları, silme, yedekleme, parola/oturum ve CSRF kontrollerini içerir. Önceki isteğe bağlı otomatik kaynak testleri de korunur. Test kayıtları yalnızca geçici veritabanlarındadır; gerçek kataloğa örnek fiyat eklenmez.
+63 test; bütçe hesabı, manuel yayın/taslak kuralları, fiyat/URL doğrulaması, öncelik ve çözünürlük seçimi, düzenleme çakışmaları, silme, yedekleme, parola/oturum ve CSRF kontrollerini içerir. Önceki isteğe bağlı otomatik kaynak testleri de korunur. Test kayıtları yalnızca geçici veritabanlarındadır; gerçek kataloğa örnek fiyat eklenmez.
 
 Gerçek Chromium ile manuel ekranın baştan sona testi:
 

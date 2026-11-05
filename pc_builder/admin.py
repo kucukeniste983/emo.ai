@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from flask import jsonify, redirect, render_template, request, session, url_for
 
 from .manual import MANUAL_CATEGORIES, ManualError
+from .budgets import BUDGET_OPTIONS
 
 
 def register_admin(app, store):
@@ -38,7 +39,7 @@ def register_admin(app, store):
 
     @app.context_processor
     def owner_context():
-        return {'can_manage': authorized()}
+        return {'can_manage': authorized(), 'budget_options': BUDGET_OPTIONS}
 
     @app.before_request
     def admin_body_limit():

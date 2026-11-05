@@ -18,6 +18,8 @@ import sys
 import threading
 import webbrowser
 
+from pc_builder.budgets import BUDGET_OPTIONS
+
 
 def budget_value(value):
     text = value.strip().replace(' ', '')
@@ -25,12 +27,13 @@ def budget_value(value):
         text = text.replace('.', '')
     try:
         amount = Decimal(text.replace(',', '.'))
-        if (not amount.is_finite() or not 1000 <= amount <= 500000
+        if (not amount.is_finite() or amount not in BUDGET_OPTIONS
                 or amount.as_tuple().exponent < -2):
             raise ValueError
         return amount
     except (InvalidOperation, ValueError):
-        raise argparse.ArgumentTypeError('Bütçe 1.000–500.000 TL arasında olmalı.') from None
+        choices = ', '.join(f'{budget // 1000} bin' for budget in BUDGET_OPTIONS)
+        raise argparse.ArgumentTypeError(f'Geçerli bütçeler (TL): {choices}.') from None
 
 
 def port_value(value):

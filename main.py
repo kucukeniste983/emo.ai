@@ -8,8 +8,9 @@ from flask import Flask, jsonify, render_template, request
 from pc_builder.catalog import CATALOG, CATEGORIES
 from pc_builder.optimizer import choose_build
 from pc_builder.prices import SourceBusy, SourceUnavailable
-from pc_builder.manual import ManualError, ManualStore, MIN_BUDGET, MAX_BUDGET
+from pc_builder.manual import ManualError, ManualStore
 from pc_builder.admin import register_admin
+from pc_builder.budgets import BUDGET_OPTIONS
 
 
 def create_app(source=None, *, data_dir=None, local_admin=False, admin_password=None):
@@ -24,11 +25,10 @@ def create_app(source=None, *, data_dir=None, local_admin=False, admin_password=
     app.extensions['manual_store'] = store
     register_admin(app, store)
     mode = 'manual' if manual_mode else getattr(source, 'mode', 'http')
-    minimum, maximum = (MIN_BUDGET, MAX_BUDGET) if manual_mode else (15000, 150000)
 
     @app.get('/')
     def home():
-        return render_template('index.html', categories=CATEGORIES, price_mode=mode, min_budget=minimum, max_budget=maximum)
+        return render_template('index.html', categories=CATEGORIES, price_mode=mode)
 
     @app.get('/api/health')
     def health():
@@ -43,10 +43,10 @@ def create_app(source=None, *, data_dir=None, local_admin=False, admin_password=
             if isinstance(data.get('budget'), bool):
                 raise ValueError
             budget = Decimal(str(data.get('budget')))
-            if not budget.is_finite() or not minimum <= budget <= maximum or budget.as_tuple().exponent < -2:
+            if not budget.is_finite() or budget not in BUDGET_OPTIONS or budget.as_tuple().exponent < -2:
                 raise ValueError
         except (InvalidOperation, ValueError, TypeError):
-            return jsonify(error='invalid_budget', message=f'{minimum:,}–{maximum:,} TL arasında bir bütçe gir.'.replace(',', '.')), 400
+            return jsonify(error='invalid_budget', message='Listede bulunan bütçe seçeneklerinden birini seç.'), 400
         resolution = data.get('resolution', '1080p')
         if resolution not in ('1080p', '1440p', '4k'):
             return jsonify(error='invalid_resolution', message='Geçerli bir çözünürlük seç.'), 400

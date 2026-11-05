@@ -49,7 +49,7 @@ def main():
                 owner.locator('#system-name').fill('Test parça sistemi')
                 owner.get_by_role('button', name='Taslak kaydet', exact=True).click()
                 expect(owner.locator('#system-count')).to_have_text('1')
-                check = owner.request.post(base + '/api/build', data={'budget': 35000})
+                check = owner.request.post(base + '/api/build', data={'budget': 40000})
                 assert check.status == 422
                 for index, (key, label) in enumerate(CATEGORIES.items()):
                     row = owner.locator(f'[data-category="{key}"]')
@@ -63,7 +63,11 @@ def main():
                 consumer = context.new_page()
                 consumer.on('pageerror', lambda error: errors.append(str(error)))
                 consumer.goto(base + '/')
-                consumer.locator('#budget').fill('35000')
+                expected_budgets = ['20000', '30000', '40000', '50000', '60000', '70000', '80000', '90000',
+                                    '100000', '120000', '140000', '160000', '200000', '250000']
+                assert consumer.locator('#budget option').evaluate_all('(options) => options.map(option => option.value)') == expected_budgets
+                assert consumer.locator('#budget-range').count() == 0
+                consumer.locator('#budget').select_option('40000')
                 consumer.get_by_role('button', name='Sistemimi oluştur', exact=True).click()
                 expect(consumer.locator('#build-result')).to_be_visible()
                 expect(consumer.locator('.part-row')).to_have_count(7)
@@ -76,17 +80,23 @@ def main():
 
                 owner.locator('#new-system').click()
                 owner.locator('#system-name').fill('Test hazır sistem')
-                owner.locator('#budget-min').fill('50000')
-                owner.locator('#budget-max').fill('60000')
+                owner.locator('#budget-min').select_option('200000')
+                owner.locator('#budget-max').select_option('250000')
                 owner.locator('#system-resolution').select_option('1440p')
                 owner.locator('#system-kind').select_option('ready')
-                owner.locator('#ready-price').fill('55000')
+                owner.locator('#ready-price').fill('245000')
                 owner.locator('#ready-url').fill('https://www.akakce.com/fixture/en-ucuz-hazir-fiyati,999999.html')
                 owner.locator('#compatibility-confirmed').check()
                 owner.get_by_role('button', name='Kaydet ve yayınla', exact=True).click()
                 expect(owner.locator('#system-count')).to_have_text('2')
-                ready = owner.request.post(base + '/api/build', data={'budget': 55000, 'resolution': '1440p'})
+                ready = owner.request.post(base + '/api/build', data={'budget': 250000, 'resolution': '1440p'})
                 assert ready.status == 200 and len(ready.json()['parts']) == 1
+                consumer.locator('#budget').select_option('250000')
+                consumer.locator('input[value="1440p"]').check()
+                consumer.get_by_role('button', name='Sistemimi oluştur', exact=True).click()
+                expect(consumer.locator('#result-title')).to_have_text('Test hazır sistem')
+                expect(consumer.locator('#total-price')).to_contain_text('245.000')
+                assert consumer.evaluate('document.documentElement.scrollWidth <= innerWidth')
                 backup = owner.request.get(base + '/api/admin/export')
                 assert len(backup.json()['systems']) == 2
                 assert errors == [], errors
@@ -100,10 +110,10 @@ def main():
         try:
             from urllib.request import Request, urlopen
             import json
-            request = Request(base + '/api/build', data=json.dumps({'budget': 55000, 'resolution': '1440p'}).encode(), headers={'Content-Type': 'application/json'})
+            request = Request(base + '/api/build', data=json.dumps({'budget': 250000, 'resolution': '1440p'}).encode(), headers={'Content-Type': 'application/json'})
             with urlopen(request, timeout=10) as response:
                 result = json.load(response)
-            assert result['system_name'] == 'Test hazır sistem' and result['total'] == 55000
+            assert result['system_name'] == 'Test hazır sistem' and result['total'] == 245000
             print('PASS: restarted application loaded the saved catalog from disk')
         finally:
             server.shutdown()

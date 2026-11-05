@@ -2,50 +2,26 @@
 
 const $ = (selector) => document.querySelector(selector);
 const budget = $('#budget');
-const range = $('#budget-range');
 const form = $('#build-form');
 const button = $('#build-button');
 const panel = $('#result-panel');
 const manualMode = form.dataset.mode === 'manual';
-const minBudget = Number(form.dataset.minBudget || 15000);
-const maxBudget = Number(form.dataset.maxBudget || 150000);
+const allowedBudgets = [...budget.options].map((option) => Number(option.value));
 const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 });
-const integer = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
 const symbols = { cpu: 'CPU', gpu: 'GPU', motherboard: 'MB', ram: 'RAM', ssd: 'SSD', psu: 'PSU', case: 'PC' };
 let currentBuild = null;
 let running = false;
 let copyTimer;
 
 function readBudget() {
-  const raw = budget.value.replace(/[.\s]/g, '');
-  return /^\d{1,6}$/.test(raw) ? Number(raw) : NaN;
+  const value = Number(budget.value);
+  return allowedBudgets.includes(value) ? value : NaN;
 }
 
-function syncBudget(value, format = true) {
-  if (format) budget.value = integer.format(value);
-  if (Number.isFinite(value)) range.value = Math.min(maxBudget, Math.max(minBudget, value));
-  document.querySelectorAll('[data-budget]').forEach((preset) => {
-    const selected = Number(preset.dataset.budget) === value;
-    preset.classList.toggle('selected', selected);
-    preset.setAttribute('aria-pressed', String(selected));
-  });
-}
-
-range.addEventListener('input', () => syncBudget(Number(range.value)));
-budget.addEventListener('input', () => {
-  syncBudget(readBudget(), false);
+budget.addEventListener('change', () => {
   $('#budget-error').hidden = true;
   budget.removeAttribute('aria-invalid');
 });
-budget.addEventListener('blur', () => { if (Number.isFinite(readBudget())) syncBudget(readBudget()); });
-document.querySelectorAll('[data-budget]').forEach((preset) => {
-  preset.addEventListener('click', () => {
-    syncBudget(Number(preset.dataset.budget));
-    $('#budget-error').hidden = true;
-    budget.removeAttribute('aria-invalid');
-  });
-});
-syncBudget(40000);
 
 function state(name) {
   ['empty-state', 'loading-state', 'error-state', 'build-result'].forEach((id) => {
@@ -104,8 +80,8 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (running) return;
   const value = readBudget();
-  if (!Number.isFinite(value) || value < minBudget || value > maxBudget) {
-    $('#budget-error').textContent = `${integer.format(minBudget)}–${integer.format(maxBudget)} TL arasında bir bütçe gir.`;
+  if (!Number.isFinite(value)) {
+    $('#budget-error').textContent = 'Listede bulunan bütçe seçeneklerinden birini seç.';
     $('#budget-error').hidden = false;
     budget.setAttribute('aria-invalid', 'true');
     budget.focus();
@@ -114,7 +90,7 @@ form.addEventListener('submit', async (event) => {
   running = true;
   currentBuild = null;
   button.disabled = true;
-  form.querySelectorAll('input, button[type="button"]').forEach((control) => { control.disabled = true; });
+  form.querySelectorAll('input, select, button[type="button"]').forEach((control) => { control.disabled = true; });
   $('#copy-build').textContent = 'Listeyi kopyala';
   clearTimeout(copyTimer);
   button.querySelector('.button-label').textContent = manualMode ? 'Sistemler seçiliyor' : 'Parçalar kontrol ediliyor';
@@ -144,7 +120,7 @@ form.addEventListener('submit', async (event) => {
     clearTimeout(timer);
     running = false;
     button.disabled = false;
-    form.querySelectorAll('input, button[type="button"]').forEach((control) => { control.disabled = false; });
+    form.querySelectorAll('input, select, button[type="button"]').forEach((control) => { control.disabled = false; });
     button.querySelector('.button-label').textContent = 'Sistemimi oluştur';
     button.querySelector('.button-arrow').hidden = false;
     button.querySelector('.spinner').hidden = true;

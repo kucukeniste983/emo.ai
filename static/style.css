@@ -8,3 +8,5 @@
 @media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 
 .manual-empty-link{display:inline-block;margin-top:20px;font-size:12px;color:var(--lime);border-bottom:1px solid #5b743d;padding-bottom:7px}.footer-admin{font-size:10px;color:var(--lime);margin-left:auto}.footer-admin+span{margin-left:0}
+
+.budget-field select{background:transparent;border:0;color:var(--text);width:100%;min-width:0;height:100%;font:inherit;font-size:30px;font-weight:600;letter-spacing:-1px;cursor:pointer}.budget-field select:focus-visible{outline:none}.budget-field:focus-within{border-color:var(--lime)}.budget-field select option{background:#191d19;color:var(--text);font-size:16px;letter-spacing:0}.budget-help{font-size:10px;line-height:1.6;color:var(--muted);margin:11px 0 27px}

@@ -44,14 +44,30 @@ function preview() {
   $('#editor-total').textContent = money.format(total);
 }
 
+function setBudgetBound(selector, value) {
+  const field = $(selector);
+  field.querySelectorAll('[data-legacy]').forEach((option) => option.remove());
+  const normalized = String(Number(value));
+  if (![...field.options].some((option) => option.value === normalized)) {
+    // Retain older saved ranges when editing; they cannot be newly selected.
+    const legacy = document.createElement('option');
+    legacy.value = normalized;
+    legacy.textContent = `${money.format(value)} (önceki kayıt)`;
+    legacy.disabled = true;
+    legacy.dataset.legacy = 'true';
+    field.prepend(legacy);
+  }
+  field.value = normalized;
+}
+
 function fill(record = null) {
   form.reset();
   editingId = record ? record.id : null;
   editingVersion = record ? record.version : null;
+  setBudgetBound('#budget-min', record?.budget_min ?? 30000);
+  setBudgetBound('#budget-max', record?.budget_max ?? 40000);
   if (record) {
     $('#system-name').value = record.name;
-    $('#budget-min').value = record.budget_min;
-    $('#budget-max').value = record.budget_max;
     $('#system-resolution').value = record.resolution;
     $('#system-priority').value = record.priority;
     $('#system-kind').value = record.kind;

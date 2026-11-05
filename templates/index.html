@@ -44,12 +44,10 @@
         <div class="panel-heading"><span class="step-badge">01</span><span>Kontrol sende.</span><span class="small-chip">SADECE KASA</span></div>
         <h2>Ne kadar ayıralım?</h2>
         <p class="panel-description">{% if price_mode == "manual" %}Bütçeni belirle. Yayınlanmış sistemlerden<br>sana uygun olanını seçelim.{% else %}Bütçeni belirle. Oyun odaklı bir sistem için<br>parçaları birlikte değerlendirelim.{% endif %}</p>
-        <form id="build-form" data-mode="{{ price_mode }}" data-min-budget="{{ min_budget }}" data-max-budget="{{ max_budget }}">
+        <form id="build-form" data-mode="{{ price_mode }}">
           <label class="field-label" for="budget">TOPLAM BÜTÇEN</label>
-          <div class="budget-field"><input id="budget" name="budget" type="text" inputmode="numeric" value="40.000" aria-describedby="budget-help budget-error" required maxlength="9" autocomplete="off"><span>TL</span></div>
-          <input id="budget-range" class="budget-range" type="range" min="{{ min_budget }}" max="{{ max_budget }}" step="500" value="40000" aria-label="Bütçeyi kaydırarak seç">
-          <div class="range-labels" id="budget-help"><span>{{ "{:,}".format(min_budget).replace(",", ".") }} TL</span><span>{{ "{:,}".format(max_budget).replace(",", ".") }} TL</span></div>
-          <div class="budget-presets" aria-label="Hızlı bütçe seçimi"><button type="button" data-budget="25000">25.000 ₺</button><button type="button" class="selected" data-budget="40000">40.000 ₺</button><button type="button" data-budget="60000">60.000 ₺</button><button type="button" data-budget="100000">100.000 ₺</button></div>
+          <div class="budget-field"><select id="budget" name="budget" aria-describedby="budget-help budget-error" required>{% for value in budget_options %}<option value="{{ value }}"{% if value == 40000 %} selected{% endif %}>{{ "{:,}".format(value).replace(",", ".") }} TL</option>{% endfor %}</select></div>
+          <p class="budget-help" id="budget-help">Listeden sana uygun bütçeyi seç.</p>
           <p id="budget-error" class="field-error" role="alert" hidden></p>
           <fieldset class="resolution-field"><legend class="field-label">HANGİ ÇÖZÜNÜRLÜKTE OYNUYORSUN?</legend><div class="resolution-options">
             <label><input type="radio" name="resolution" value="1080p" checked><span><strong>1080p</strong><small>Full HD</small></span></label>
